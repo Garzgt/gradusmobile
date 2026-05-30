@@ -1,24 +1,62 @@
 {
   "expo": {
     "name": "Gradus",
-    "slug": "Gradus",
+    "slug": "gradus",
     "version": "1.0.0",
+    "scheme": "gradus",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1a3c5e"
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.psu.gradus"
     },
     "android": {
+      "package": "com.psu.gradus",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+        "monochromeImage": "./assets/android-icon-monochrome.png",
+        "backgroundColor": "#1a3c5e"
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-dev-client",
+      "expo-asset",
+      "expo-secure-store",
+      "expo-web-browser",
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#1a3c5e"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "GRADUS needs access to your photos for profile picture upload.",
+          "cameraPermission": "GRADUS needs access to your camera for profile picture upload."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "1a4fd8da-d666-43a4-89df-5be92931d985"
+      }
+    },
+    "owner": "garzgt"
   }
 }

@@ -1,0 +1,1155 @@
+⚠️  LEGACY DOCUMENT — DO NOT USE AS REFERENCE
+This file describes an earlier system design that is no longer valid.
+It references in-system LOI submission, in-system enrollment, program coordinator
+as a GRADUS system user, academic history import via WebView migration, and a
+23-unit cap — all of which have been removed or redesigned.
+
+Refer to the following current documents instead:
+- Rules/gradus_info.txt
+- Rules/paper/gradus-concept.txt
+- Rules/Mobile/students/Fresh-Student/README.md
+- Rules/Mobile/students/Regular-Student/README.md
+- Rules/Mobile/students/Irregular-Student/README.md
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║                                                                                  ║
+║                         GRADUS STUDENT ENROLLMENT SYSTEM                         ║
+║                      PSU Sto. Tomas Campus - FINAL VERDICT                       ║
+║                                                                                  ║
+║              How Fresh, Regular, and Irregular Students Work                     ║
+║                         COMPLETE & DEFINITIVE GUIDE                              ║
+║                                                                                  ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ TABLE OF CONTENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ [1] STUDENT TYPE DEFINITIONS & CHARACTERISTICS
+ [2] STUDENT TYPE DETECTION LOGIC (WITH TERM CHECK)
+ [3] COMPLETE FLOW: FRESH STUDENT
+ [4] COMPLETE FLOW: REGULAR STUDENT
+ [5] COMPLETE FLOW: IRREGULAR STUDENT
+ [6] EDGE CASE: REGISTRATION BEFORE ACTIVE TERM
+ [7] COMPREHENSIVE COMPARISON TABLE
+ [8] DATABASE SCHEMA (ALL TABLES)
+ [9] BUSINESS RULES & VALIDATION LOGIC
+ [10] API ENDPOINTS REQUIRED
+ [11] UI/UX SPECIFICATIONS
+ [12] SUPER ADMIN & PROGRAM COORDINATOR WORKFLOWS
+ [13] NOTIFICATION SYSTEM
+ [14] ACADEMIC HONOR RECOGNITION RULES
+ [15] ERROR HANDLING & EDGE CASES
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ ADMIN GOVERNANCE MODEL (UPDATED)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  • SUPER ADMIN (1 account)
+    - System-wide scheduling generation/review/publication
+    - Global system data governance and overrides
+    - Manage teacher accounts and access governance
+
+  • TEACHERS
+    - Encode and post grades for assigned classes
+
+  • STUDENTS
+    - View published schedule and posted grade results
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ [1] STUDENT TYPE DEFINITIONS & CHARACTERISTICS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ ┌─────────────────────────────────────────────────────────────────────────────┐
+ │ FRESH STUDENT                                                               │
+ ├─────────────────────────────────────────────────────────────────────────────┤
+ │                                                                             │
+ │ DEFINITION:                                                                 │
+ │ A first-year, first-semester student with NO academic history yet.          │
+ │                                                                             │
+ │ DETECTION CRITERIA:                                                         │
+ │  • Student number year matches current academic year                        │
+ │  • Current active term is "1st Semester"                                    │
+ │  • No prior grades in university portal                                     │
+ │                                                                             │
+ │ CHARACTERISTICS:                                                            │
+ │  ✅ Automatically classified as REGULAR                                     │
+ │  ✅ Automatically assigned to Year Level 1                                  │
+ │  ✅ No academic history import required                                     │
+ │  ✅ No prerequisite validation needed                                       │
+ │  ✅ No standing evaluation required                                         │
+ │  ✅ Follows block section enrollment (fixed section)                        │
+ │  ✅ Enrolled in ALL subjects of assigned section                            │
+ │  ✅ Must carry full academic load (typically 24 units for BSIT 1Y-1S)       │
+ │  ✅ Eligible for academic honors (if criteria met)                          │
+ │  ✅ NSTP included in enrollment (not in schedule grid)                      │
+ │  ✅ Saturday blocked (NSTP day, no regular classes)                         │
+ │                                                                             │
+ │ EXAMPLE:                                                                    │
+ │  Student Number  : 2025309289                                               │
+ │  Email           : 2025309289@pampangastateu.edu.ph                         │
+ │  Current Term    : 1st Semester 2025-2026                                  │
+ │  Year Level      : 1 (auto-assigned)                                        │
+ │  Standing        : REGULAR (auto-assigned)                                  │
+ │  Section         : BSIT 1-A (selected via LOI)                              │
+ │  Subjects        : 8 subjects / 24 units (full load)                        │
+ │  Academic History: Not Applicable                                           │
+ │                                                                             │
+ │ ENROLLMENT FLOW:                                                            │
+ │  1. Google Sign-In (PSU email only)                                         │
+ │  2. Profile Completion                                                      │
+ │  3. Auto-Classification (no import needed)                                  │
+ │  4. Wait for Schedule Publication                                           │
+ │  5. Select section and generate printable advising form                     │
+ │  6. Submit printed advising form (hard copy) directly to main campus        │
+ │  7. Main campus processes official enrollment outside GRADUS                │
+ │  8. Enrollment Complete                                                     │
+ │                                                                             │
+ └─────────────────────────────────────────────────────────────────────────────┘
+
+ ┌─────────────────────────────────────────────────────────────────────────────┐
+ │ REGULAR STUDENT (CONTINUING)                                                │
+ ├─────────────────────────────────────────────────────────────────────────────┤
+ │                                                                             │
+ │ DEFINITION:                                                                 │
+ │ A continuing student who PASSED ALL subjects every semester and follows     │
+ │ the standard curriculum flow with NO back subjects.                         │
+ │                                                                             │
+ │ DETECTION CRITERIA:                                                         │
+ │  • Has academic history (imported from portal)                              │
+ │  • All required lower-year subjects are PASSED                              │
+ │  • No failed subjects in academic record                                    │
+ │  • Standing evaluation result = REGULAR                                     │
+ │                                                                             │
+ │ CHARACTERISTICS:                                                            │
+ │  ✅ Must import all completed semesters from portal                         │
+ │  ✅ System evaluates standing based on pass/fail record                     │
+ │  ✅ Follows block section enrollment (fixed section)                        │
+ │  ✅ Assigned to ONE section only                                            │
+ │  ✅ Enrolled in ALL subjects of that section (full load)                    │
+ │  ✅ No subject-by-subject selection                                         │
+ │  ✅ No time conflict checking needed (section pre-validated)                │
+ │  ✅ Prerequisite validation automatic (all passed)                          │
+ │  ✅ Eligible for academic honors (Dean's/President's List)                  │
+ │  ✅ No advance subject taking                                               │
+ │  ✅ No back subject retaking                                                │
+ │                                                                             │
+ │ EXAMPLE:                                                                    │
+ │  Student Number  : 2021301234                                               │
+ │  Email           : 2021301234@pampangastateu.edu.ph                         │
+ │  Current Term    : 4th Year 2nd Semester 2024-2025                         │
+ │  Year Level      : 4 (evaluated from history)                               │
+ │  Standing        : REGULAR (all subjects passed)                            │
+ │  Section         : BSIT 4-A (selected via LOI)                              │
+ │  Subjects        : 6 subjects / 21 units (full load)                        │
+ │  Academic History: 51 subjects completed, all passed                        │
+ │  GWA (Previous)  : 1.45 (eligible for honors)                               │
+ │                                                                             │
+ │ ENROLLMENT FLOW:                                                            │
+ │  1. Google Sign-In (PSU email only)                                         │
+ │  2. Profile Completion                                                      │
+ │  3. Academic History Import (via Mobile WebView)                            │
+ │  4. Standing Evaluation (system checks all subjects → REGULAR)              │
+ │  5. Wait for Schedule Publication                                           │
+ │  6. Select section and generate printable advising form                     │
+ │  7. Submit printed advising form (hard copy) directly to main campus        │
+ │  8. Main campus processes official enrollment outside GRADUS                │
+ │  9. Enrollment Complete                                                     │
+ │                                                                             │
+ └─────────────────────────────────────────────────────────────────────────────┘
+
+ ┌─────────────────────────────────────────────────────────────────────────────┐
+ │ IRREGULAR STUDENT                                                           │
+ ├─────────────────────────────────────────────────────────────────────────────┤
+ │                                                                             │
+ │ DEFINITION:                                                                 │
+ │ A continuing student who FAILED one or more subjects in a previous          │
+ │ semester, causing deviation from the standard curriculum flow.              │
+ │                                                                             │
+ │ DETECTION CRITERIA:                                                         │
+ │  • Has academic history (imported from portal)                              │
+ │  • Has at least ONE failed subject                                          │
+ │  • Not all required lower-year subjects are passed                          │
+ │  • Standing evaluation result = IRREGULAR                                   │
+ │                                                                             │
+ │ CHARACTERISTICS:                                                            │
+ │  ✅ Must import all completed semesters from portal                         │
+ │  ✅ System evaluates standing based on pass/fail record                     │
+ │  ✅ Has BACK SUBJECTS (failed subjects to retake)                           │
+ │  ✅ Has BLOCKED SUBJECTS (due to failed prerequisites)                      │
+ │  ✅ NO ADVANCE SUBJECT TAKING (must follow current curriculum progression)   │
+ │  ✅ NO fixed section assignment                                             │
+ │  ✅ Subject-by-subject enrollment across different sections                 │
+ │  ✅ Time conflict checking required (cross-section enrollment)              │
+ │  ✅ Prerequisite validation per subject                                     │
+ │  ✅ Unit load cap enforced (maximum 23 units per semester)                  │
+ │  ✅ NOT eligible for academic honors                                        │
+ │  ✅ System generates recommended enrollment plan                            │
+ │  ✅ Student prints advising form and submits hard copy to main campus       │
+ │  ✅ Appears in multiple section class lists                                 │
+ │                                                                             │
+ │ EXAMPLE:                                                                    │
+ │  Student Number  : 2023309289                                               │
+ │  Email           : 2023309289@pampangastateu.edu.ph                         │
+ │  Current Term    : 2nd Year 2nd Semester 2025-2026                         │
+ │  Year Level      : 2 (last completed year)                                  │
+ │  Standing        : IRREGULAR                                                │
+ │  Reason          : Failed CC 213(D) and ITELEC 1 in 2Y-1S                  │
+ │  Back Subjects   : 2 (CC 213(D), ITELEC 1)                                  │
+ │  Blocked Subjects: 5 (due to failed prerequisites)                          │
+ │  Section         : None (cross-section enrollment)                          │
+ │  Subjects        : 6 subjects / 17 units (variable load)                    │
+ │  Academic History: 19 subjects completed, 2 failed                          │
+ │                                                                             │
+ │ ENROLLMENT FLOW:                                                            │
+ │  1. Google Sign-In (PSU email only)                                         │
+ │  2. Profile Completion                                                      │
+ │  3. Academic History Import (via Mobile WebView)                            │
+ │  4. Standing Evaluation (system detects failed subjects → IRREGULAR)        │
+ │  5. Wait for Schedule Publication                                           │
+ │  6. Generate Enrollment Plan (system runs algorithm)                        │
+ │  7. Review Generated Plan (student sees recommended schedule)               │
+ │  8. Print Advising Form                                                     │
+ │  9. Submit printed advising form (hard copy) directly to main campus        │
+ │  10. Main campus processes official enrollment outside GRADUS               │
+ │  11. Enrollment Complete                                                    │
+ │                                                                             │
+ └─────────────────────────────────────────────────────────────────────────────┘
+
+ ┌─────────────────────────────────────────────────────────────────────────────┐
+ │ TRANSFEREE STUDENT                                                          │
+ ├─────────────────────────────────────────────────────────────────────────────┤
+ │                                                                             │
+ │ DEFINITION:                                                                 │
+ │ A student transferring from another school or another department/program    │
+ │ within PSU whose academic records are NOT available in the PSU evaluation   │
+ │ portal and therefore cannot be imported via mobile WebView.                 │
+ │                                                                             │
+ │ DETECTION CRITERIA:                                                         │
+ │  • Student is not classified as Fresh                                       │
+ │  • PSU portal returns no importable evaluation records                      │
+ │  • OR student self-identifies as transferee during profile completion       │
+ │                                                                             │
+ │ CHARACTERISTICS:                                                            │
+ │  ✅ Cannot be auto-classified by the system                                 │
+ │  ✅ No automated advising plan generation                                   │
+ │  ✅ No standing evaluation possible without portal data                     │
+ │  ✅ System blocks enrollment flow and shows main campus redirect message    │
+ │  ❌ NOT eligible for academic honors until properly classified              │
+ │                                                                             │
+ │ SYSTEM ACTION:                                                              │
+ │  standing_status          = 'transferee'                                    │
+ │  academic_history_status  = 'not_applicable_transferee'                     │
+ │  Show message: "Your academic records could not be found in the PSU        │
+ │  evaluation portal. Please contact main campus directly for subject        │
+ │  equivalency evaluation and enrollment assistance."                        │
+ │                                                                             │
+ │ MAIN CAMPUS ACTION (outside GRADUS):                                        │
+ │  • Evaluate subject equivalencies from previous institution or program      │
+ │  • Determine year level placement                                           │
+ │  • Process official enrollment                                              │
+ │                                                                             │
+ │ ENROLLMENT FLOW:                                                            │
+ │  1. Google Sign-In (PSU email only)                                         │
+ │  2. Profile Completion                                                      │
+ │  3. System detects no importable portal records → flags as TRANSFEREE       │
+ │  4. System displays main campus redirect message                            │
+ │  5. Student contacts main campus directly                                   │
+ │  6. Main campus evaluates equivalencies and processes enrollment            │
+ │  8. Enrollment Complete                                                     │
+ │                                                                             │
+ └─────────────────────────────────────────────────────────────────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ [2] STUDENT TYPE DETECTION LOGIC (WITH TERM CHECK)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ TRIGGERED AFTER PROFILE COMPLETION
+ ┌─────────────────────────────────────────────────────────────────────────────┐
+ │                                                                             │
+ │  STEP 1: Extract year from student number                                  │
+ │  ──────────────────────────────────────────────────────────────────────    │
+ │  Student Number: 2025309289                                                 │
+ │  Extracted Year: 2025                                                       │
+ │                                                                             │
+ │  STEP 2: Check if active academic term exists                              │
+ │  ──────────────────────────────────────────────────────────────────────    │
+ │  Query:                                                                     │
+ │    SELECT * FROM academic_terms WHERE is_active = true LIMIT 1             │
+ │                                                                             │
+ │  IF (no active term found):                                                 │
+ │    ├─ academic_history_status = "pending_term"                              │
+ │    ├─ standing_status = NULL                                                │
+ │    ├─ current_year_level = NULL                                             │
+ │    ├─ Show "Waiting for enrollment period" message                          │
+ │    ├─ OPTIONALLY allow grade import (saved but not evaluated)               │
+ │    └─ EXIT (wait for Super Admin to activate term)                          │
+ │                                                                             │
+ │  ELSE (active term exists):                                                 │
+ │    └─ PROCEED to STEP 3                                                     │
+ │                                                                             │
+ │  STEP 3: Get current active academic term details                          │
+ │  ──────────────────────────────────────────────────────────────────────    │
+ │  Active Term: 1st Semester 2025-2026                                        │
+ │  Term Year  : 2025                                                          │
+ │  Semester   : 1st                                                           │
+ │                                                                             │
+ │  STEP 4: Apply detection rules                                             │
+ │  ──────────────────────────────────────────────────────────────────────    │
+ │                                                                             │
+ │  RULE A: FRESH STUDENT DETECTION                                            │
+ │  ───────────────────────────────────────────────────────────────────────   │
+ │  IF (student_number_year == current_term_year)                              │
+ │     AND (current_semester == "1st Semester")                                │
+ │  THEN                                                                       │
+ │    student_type = "FRESH"                                                   │
+ │    academic_history_status = "not_applicable"                               │
+ │    standing_status = "regular"                                              │
+ │    current_year_level = 1                                                   │
+ │    SKIP academic history import                                             │
+ │    PROCEED to advising form and section selection flow                      │
+ │    EXIT                                                                     │
+ │                                                                             │
+ │  RULE B: CONTINUING STUDENT DETECTION                                       │
+ │  ───────────────────────────────────────────────────────────────────────   │
+ │  ELSE                                                                       │
+ │    student_type = "CONTINUING"                                              │
+ │    academic_history_status = "incomplete"                                   │
+ │    standing_status = NULL (to be evaluated after import)                    │
+ │    current_year_level = NULL (to be evaluated after import)                 │
+ │    REQUIRE academic history import from portal                              │
+ │                                                                             │
+ │    IF import attempt returns no records from portal:                        │
+ │      → APPLY RULE C: TRANSFEREE DETECTION                                   │
+ │                                                                             │
+ │    AFTER successful import completion:                                      │
+ │    RUN standing evaluation (STEP 5)                                         │
+ │                                                                             │
+ │  RULE C: TRANSFEREE DETECTION                                               │
+ │  ───────────────────────────────────────────────────────────────────────   │
+ │  IF (student is not FRESH)                                                  │
+ │     AND (PSU portal returns no importable evaluation records)               │
+ │     OR  (student self-identifies as transferee at profile completion)       │
+ │  THEN                                                                       │
+ │    student_type = "TRANSFEREE"                                              │
+ │    academic_history_status = "not_applicable_transferee"                    │
+ │    standing_status = "transferee"                                           │
+ │    current_year_level = NULL                                                │
+ │    BLOCK automated advising plan generation                                 │
+ │    SHOW redirect message → contact main campus directly                      │
+ │    EXIT (main campus handles placement outside GRADUS)                      │
+ │                                                                             │
+ │  STEP 5: STANDING EVALUATION (CONTINUING STUDENTS ONLY)                    │
+ │  ──────────────────────────────────────────────────────────────────────    │
+ │                                                                             │
+ │  INPUT:                                                                     │
+ │    student_id: 2023309289                                                   │
+ │    program: BSIT                                                            │
+ │    imported_grades: student_subject_completions table                       │
+ │                                                                             │
+ │  PROCESS:                                                                   │
+ │    1. Determine expected year level from latest term_taken                  │
+ │    2. Fetch all required subjects for that year level                       │
+ │    3. Check pass/fail status for each required subject                      │
+ │                                                                             │
+ │  EVALUATION LOGIC:                                                          │
+ │                                                                             │
+ │    IF (all required lower-year subjects are PASSED)                         │
+ │    THEN                                                                     │
+ │      standing_status = "regular"                                            │
+ │      current_year_level = computed from curriculum                          │
+ │      PROCEED to LOI enrollment flow                                         │
+ │                                                                             │
+ │    ELSE (at least one subject FAILED)                                       │
+ │      standing_status = "irregular"                                          │
+ │      current_year_level = last successfully completed year                  │
+ │      PROCEED to plan-based enrollment flow                                  │
+ │                                                                             │
+ │  EXAMPLE EVALUATION:                                                        │
+ │  ───────────────────────────────────────────────────────────────────────   │
+ │                                                                             │
+ │  Student: 2023309289                                                        │
+ │  Latest term_taken: 2024-2025 1st Semester (2Y-1S)                         │
+ │  Expected next: 2Y-2S                                                       │
+ │                                                                             │
+ │  Required subjects check:                                                   │
+ │    1Y-1S (8 subjects) → ✅ All PASSED                                       │
+ │    1Y-2S (8 subjects) → ✅ All PASSED                                       │
+ │    2Y-1S (8 subjects) → ❌ 2 FAILED (CC 213(D), ITELEC 1)                  │
+ │                                                                             │
+ │  Result:                                                                    │
+ │    standing_status = "irregular"                                            │
+ │    current_year_level = 2                                                   │
+ │    reason = "Failed 2 subjects in 2Y-1S"                                    │
+ │                                                                             │
+ └─────────────────────────────────────────────────────────────────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ [3] COMPLETE FLOW: FRESH STUDENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+ STUDENT: Dela Cruz, Juan Santos
+ STUDENT NUMBER: 2025309289
+ EMAIL: 2025309289@pampangastateu.edu.ph
+ PROGRAM: BSIT
+ SCENARIO: First-year, first-semester student (no academic history yet)
+
+ ──────────────────────────────────────────────────────────────────────────────
+ PHASE 1 — REGISTRATION
+ ──────────────────────────────────────────────────────────────────────────────
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 1.1 — Student Opens GRADUS System                               │
+ │ URL: https://gradus.psu.edu.ph                                        │
+ │ Page: Login Page                                                      │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 1.2 — Student Clicks "Sign In with Google"                      │
+ │ Action: Google OAuth popup appears                                    │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 1.3 — Student Selects PSU Email Account                         │
+ │ Email: 2025309289@pampangastateu.edu.ph                               │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 1.4 — System Validates Email Domain                             │
+ │ Check: email ends with "@pampangastateu.edu.ph"?                      │
+ │ Result: ✅ PASS                                                        │
+ │ IF domain is invalid → ❌ ACCESS DENIED (show error message)          │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 1.5 — System Extracts Student Number                            │
+ │ Email prefix: "2025309289"                                            │
+ │ Auto-assigned student_number: 2025309289                              │
+ │ Note: Student does NOT manually enter student number                  │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 1.6 — System Checks if Profile Exists                           │
+ │ Query: SELECT * FROM students WHERE student_number = '2025309289'     │
+ │ Result: NULL (no record found)                                        │
+ │ Action: Redirect to Profile Completion Form                           │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 1.7 — Student Completes Profile Form                            │
+ │                                                                       │
+ │ Form Fields (all required):                                           │
+ │  First Name     : Juan                                                │
+ │  Middle Name    : Santos                                              │
+ │  Last Name      : Dela Cruz                                           │
+ │  Program        : [Dropdown: BSIT, BSBA, BEED, BSHM] → BSIT          │
+ │  Contact Number : 09123456789                                         │
+ │                                                                       │
+ │ Pre-filled (read-only):                                               │
+ │  Student Number : 2025309289                                          │
+ │  Email          : 2025309289@pampangastateu.edu.ph                    │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 1.8 — Student Submits Profile                                   │
+ │ Button: "Complete Registration"                                       │
+ │                                                                       │
+ │ Table: students                                                       │
+ │ Action: INSERT                                                        │
+ │ Record:                                                               │
+ │   student_number           : "2025309289"                             │
+ │   email                    : "2025309289@pampangastateu.edu.ph"       │
+ │   first_name               : "Juan"                                   │
+ │   middle_name              : "Santos"                                 │
+ │   last_name                : "Dela Cruz"                              │
+ │   program                  : "BSIT"                                   │
+ │   contact_number           : "09123456789"                            │
+ │   academic_history_status  : NULL (to be set in next step)            │
+ │   standing_status          : NULL (to be set in next step)            │
+ │   current_year_level       : NULL (to be set in next step)            │
+ │   created_at               : NOW()                                    │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ──────────────────────────────────────────────────────────────────────────────
+ PHASE 2 — AUTO-CLASSIFICATION (FRESH STUDENT DETECTED)
+ ──────────────────────────────────────────────────────────────────────────────
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 2.1 — System Runs Detection Logic                               │
+ │                                                                       │
+ │ Extract year from student_number:                                     │
+ │   Input: "2025309289"                                                 │
+ │   Year: 2025                                                          │
+ │                                                                       │
+ │ Check if active term exists:                                          │
+ │   Query: SELECT * FROM academic_terms WHERE is_active = true          │
+ │   Result: Found term "2025-2026-1S"                                   │
+ │                                                                       │
+ │ Get active term details:                                              │
+ │   term_id: "2025-2026-1S"                                             │
+ │   term_name: "1st Semester"                                           │
+ │   school_year: "2025-2026"                                            │
+ │   term_year: 2025                                                     │
+ │   semester: "1st"                                                     │
+ │                                                                       │
+ │ Apply detection rules:                                                │
+ │   student_number_year (2025) == term_year (2025)? → TRUE ✅           │
+ │   semester == "1st Semester"? → TRUE ✅                               │
+ │                                                                       │
+ │ CONCLUSION: FRESH STUDENT DETECTED                                    │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 2.2 — System Auto-Classifies Student                            │
+ │                                                                       │
+ │ Table: students                                                       │
+ │ Action: UPDATE                                                        │
+ │ WHERE: student_number = "2025309289"                                  │
+ │ SET:                                                                  │
+ │   academic_history_status = "not_applicable"                          │
+ │   standing_status         = "regular"                                 │
+ │   current_year_level      = 1                                         │
+ │   updated_at              = NOW()                                     │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 2.3 — System Shows Welcome Message                              │
+ │                                                                       │
+ │ Modal/Alert:                                                          │
+ │ ┌─────────────────────────────────────────────────────────────────┐  │
+ │ │ 🎓 WELCOME, FRESH STUDENT!                                      │  │
+ │ │                                                                 │  │
+ │ │ You have been identified as a first-year student for the       │  │
+ │ │ current semester.                                               │  │
+ │ │                                                                 │  │
+ │ │ ✅ You are automatically classified as REGULAR                  │  │
+ │ │ ✅ You are assigned to Year Level 1                             │  │
+ │ │ ✅ No academic history import required                          │  │
+ │ │                                                                 │  │
+ │ │ Next Step:                                                      │  │
+ │ │ Wait for class schedules to be published, then submit your     │  │
+ │ │ Letter of Intent to select your section.                       │  │
+ │ │                                                                 │  │
+ │ │ [Go to Dashboard]                                               │  │
+ │ └─────────────────────────────────────────────────────────────────┘  │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 2.4 — Student Redirected to Dashboard                           │
+ │                                                                       │
+ │ Display:                                                              │
+ │ ┌─────────────────────────────────────────────────────────────────┐  │
+ │ │ STUDENT DASHBOARD                                               │  │
+ │ ├─────────────────────────────────────────────────────────────────┤  │
+ │ │                                                                 │  │
+ │ │ Profile:                                                        │  │
+ │ │  Name            : Dela Cruz, Juan Santos                       │  │
+ │ │  Student Number  : 2025309289                                   │  │
+ │ │  Program         : BSIT                                         │  │
+ │ │  Year Level      : 1st Year ✅                                  │  │
+ │ │  Standing        : REGULAR ✅                                   │  │
+ │ │                                                                 │  │
+ │ │ Academic Status:                                                │  │
+ │ │  Semester        : 1st Semester 2025-2026                       │  │
+ │ │  Academic History: Not Applicable (Fresh Student)               │  │
+ │ │  Enrollment      : 🕒 Waiting for Schedule Publication          │  │
+ │ │                                                                 │  │
+ │ │ Next Steps:                                                     │  │
+ │ │  1. Wait for Super Admin to publish class schedules             │  │
+ │ │  2. Submit Letter of Intent (LOI) to select section             │  │
+ │ │                                                                 │  │
+ │ └─────────────────────────────────────────────────────────────────┘  │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ──────────────────────────────────────────────────────────────────────────────
+ PHASE 3 — SCHEDULE PUBLICATION (SUPER ADMIN SIDE)
+ ──────────────────────────────────────────────────────────────────────────────
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 3.1 — Super Admin Generates Schedules                           │
+ │ Location: Super Admin Portal → Scheduling → Generate                 │
+ │ Action: Super Admin uses scheduling engine to generate schedules     │
+ │ Scope: All Year 1 sections (BSIT 1-A, 1-B, 1-C)                      │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 3.2 — Super Admin Reviews and Fixes Conflicts                   │
+ │ Location: Super Admin Portal → Scheduling → Manage                   │
+ │ Action: Super Admin resolves any scheduling conflicts                │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 3.3 — Super Admin Publishes Schedules                           │
+ │ Location: Super Admin Portal → Scheduling → Publish                  │
+ │ Button: "Publish Selected Schedules"                                 │
+ │                                                                       │
+ │ Table: schedule_entries                                               │
+ │ Action: UPDATE                                                        │
+ │ WHERE: section_id IN ('BSIT-1-A', 'BSIT-1-B', 'BSIT-1-C')            │
+ │        AND term_id = '2025-2026-1S'                                   │
+ │ SET: schedule_status = "published"                                    │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 3.4 — System Notifies Fresh Students                            │
+ │                                                                       │
+ │ Query: SELECT * FROM students                                         │
+ │        WHERE standing_status = 'regular'                              │
+ │        AND current_year_level = 1                                     │
+ │        AND academic_history_status = 'not_applicable'                 │
+ │                                                                       │
+ │ For each student:                                                     │
+ │   Send email notification                                             │
+ │   Create in-app notification                                          │
+ │                                                                       │
+ │ Email Template:                                                       │
+ │ ┌─────────────────────────────────────────────────────────────────┐  │
+ │ │ Subject: Class Schedules Published                              │  │
+ │ │                                                                 │  │
+ │ │ Dear Dela Cruz, Juan Santos,                                    │  │
+ │ │                                                                 │  │
+ │ │ Class schedules for 1st Semester 2025-2026 are now available.  │  │
+ │ │                                                                 │  │
+ │ │ Please submit your Letter of Intent to select your section.    │  │
+ │ │                                                                 │  │
+ │ │ Login now: https://gradus.psu.edu.ph                            │  │
+ │ │                                                                 │  │
+ │ │ PSU Sto. Tomas Registrar                                        │  │
+ │ └─────────────────────────────────────────────────────────────────┘  │
+ │                                                                       │
+ │ In-App Notification:                                                  │
+ │   📋 Schedules published! Submit your Letter of Intent now.           │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ──────────────────────────────────────────────────────────────────────────────
+ PHASE 4 — ADVISING FORM SUBMISSION [UPDATED — IN-SYSTEM LOI REMOVED]
+ In-system LOI submission was removed from GRADUS (see Removal-Plan.md).
+ The updated flow: student selects section → generates printable advising form
+ → submits hard copy directly to main campus for official enrollment processing.
+ The detailed steps below describe the old in-system LOI flow for reference only.
+ ──────────────────────────────────────────────────────────────────────────────
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 4.1 — Student Logs In and Sees Updated Dashboard                │
+ │                                                                       │
+ │ Dashboard shows:                                                      │
+ │   📋 New notification: "Schedules published!"                         │
+ │   Button: [Submit Letter of Intent] (now enabled)                    │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 4.2 — Student Clicks "Submit LOI"                               │
+ │ Action: LOI Form Modal Opens                                          │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 4.3 — LOI Form (Fresh Student Version)                          │
+ │                                                                       │
+ │ ┌─────────────────────────────────────────────────────────────────┐  │
+ │ │ LETTER OF INTENT FORM                                           │  │
+ │ │ 1st Semester A.Y. 2025-2026                                     │  │
+ │ ├─────────────────────────────────────────────────────────────────┤  │
+ │ │                                                                 │  │
+ │ │ Student Information (auto-filled, read-only):                   │  │
+ │ │  Student Number : 2025309289                                    │  │
+ │ │  Name           : Dela Cruz, Juan S.                            │  │
+ │ │  Program        : BSIT                                          │  │
+ │ │  Year Level     : 1 (Fresh Student)                             │  │
+ │ │                                                                 │  │
+ │ │ Enrollment Information:                                         │  │
+ │ │  Academic Term  : 1st Semester 2025-2026 (auto-filled)          │  │
+ │ │  Section        : [Select Section ▼]                            │  │
+ │ │                   Options:                                      │  │
+ │ │                   • BSIT 1-A (35/40 students)                   │  │
+ │ │                   • BSIT 1-B (38/40 students)                   │  │
+ │ │                   • BSIT 1-C (30/40 students)                   │  │
+ │ │                                                                 │  │
+ │ │  Notes (optional): [text area]                                  │  │
+ │ │                                                                 │  │
+ │ └─────────────────────────────────────────────────────────────────┘  │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 4.4 — Student Selects Section: BSIT 1-A                         │
+ │ Action: Section preview appears                                       │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 4.5 — System Shows Section Preview                              │
+ │                                                                       │
+ │ Query: SELECT * FROM schedule_entries                                 │
+ │        WHERE section_id = 'BSIT-1-A'                                  │
+ │        AND term_id = '2025-2026-1S'                                   │
+ │        AND schedule_status = 'published'                              │
+ │                                                                       │
+ │ Also fetch NSTP 1 from subjects table (not in schedule_entries)       │
+ │                                                                       │
+ │ Display:                                                              │
+ │ ┌─────────────────────────────────────────────────────────────────┐  │
+ │ │ SECTION: BSIT 1-A                                               │  │
+ │ │ SEMESTER: 1st Semester 2025-2026                                │  │
+ │ │ TOTAL SUBJECTS: 8                                               │  │
+ │ │ TOTAL UNITS: 24                                                 │  │
+ │ │ AVAILABLE SLOTS: 5/40                                           │  │
+ │ ├─────────────────────────────────────────────────────────────────┤  │
+ │ │                                                                 │  │
+ │ │ SUBJECTS INCLUDED:                                              │  │
+ │ │  ✅ FILIPINO 113 - Komunikasyon sa Filipino (3 units)           │  │
+ │ │  ✅ CC 113(B) - Intro to Programming C++ (3 units)              │  │
+ │ │  ✅ CC 123(A) - Computer Fundamentals (3 units)                 │  │
+ │ │  ✅ CC 123(B) - Web Development (3 units)                       │  │
+ │ │  ✅ FIL 113 - Panitikan (3 units)                               │  │
+ │ │  ✅ PE 112 - Physical Education 1 (2 units)                     │  │
+ │ │  ✅ NSTP 1 - National Service Training (3 units) *              │  │
+ │ │  ✅ MATH 113 - College Algebra (3 units)                        │  │
+ │ │                                                                 │  │
+ │ │  * NSTP 1 is on Saturdays (not shown in schedule grid)         │  │
+ │ │                                                                 │  │
+ │ │ PREVIEW SCHEDULE:                                               │  │
+ │ │  Mon/Wed   7:00-8:30     FILIPINO 113   Prof. Reyes   RM 103   │  │
+ │ │  Mon/Wed   8:30-10:00    CC 113(B)      Prof. Santos  CL 1     │  │
+ │ │  Mon/Wed   10:00-11:30   MATH 113       Prof. Cruz    RM 103   │  │
+ │ │  Tue/Thu   7:00-8:30     CC 123(A)      Prof. Garcia  RM 1     │  │
+ │ │  Tue/Thu   8:30-10:00    FIL 113        Prof. Lopez   RM 1     │  │
+ │ │  Wed/Fri   1:00-2:30     CC 123(B)      Prof. Torres  CL 2     │  │
+ │ │  Friday    3:00-5:00     PE 112         Prof. Ramos   PE AREA  │  │
+ │ │  Saturday  (NSTP 1 - not shown in grid)                         │  │
+ │ │                                                                 │  │
+ │ └─────────────────────────────────────────────────────────────────┘  │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 4.6 — Student Confirms and Submits LOI                          │
+ │                                                                       │
+ │ Checkbox: ☑ I confirm that I want to enroll in BSIT 1-A              │
+ │ Button: [Submit Letter of Intent]                                    │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 4.7 — System Creates LOI Record                                 │
+ │                                                                       │
+ │ Table: letters_of_intent                                              │
+ │ Action: INSERT                                                        │
+ │ Record:                                                               │
+ │   loi_id          : "LOI-2025309289-2025-1S"                          │
+ │   student_id      : 2025309289                                        │
+ │   term_id         : "2025-2026-1S"                                    │
+ │   section_id      : "BSIT-1-A"                                        │
+ │   total_subjects  : 8                                                 │
+ │   total_units     : 24                                                │
+ │   status          : "pending"                                         │
+ │   notes           : ""                                                │
+ │   submitted_at    : NOW()                                             │
+ │   approved_by     : NULL                                              │
+ │   approved_at     : NULL                                              │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 4.8 — System Sends Program Coordinator Admin Notification       │
+ │                                                                       │
+ │ Table: notifications                                                  │
+ │ Action: INSERT                                                        │
+ │ Record:                                                               │
+ │   recipient: program_coordinator_admin                                │
+ │   message: "New LOI submitted by Dela Cruz, Juan S."                 │
+ │   link: "/program-coordinator/enrollment/loi/LOI-2025309289-2025-1S" │
+ │                                                                       │
+ │ Email sent to Program Coordinator Admin                               │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 4.9 — Student Sees Confirmation Message                         │
+ │                                                                       │
+ │ Success Alert:                                                        │
+ │   ✅ Letter of Intent submitted successfully!                         │
+ │   Status: Pending Program Coordinator Approval                        │
+ │                                                                       │
+ │ Dashboard Updated:                                                    │
+ │ ┌─────────────────────────────────────────────────────────────────┐  │
+ │ │ LOI STATUS                                                      │  │
+ │ ├─────────────────────────────────────────────────────────────────┤  │
+ │ │  Status        : 🕒 Pending Approval                            │  │
+ │ │  Section       : BSIT 1-A                                       │  │
+ │ │  Subjects      : 8                                              │  │
+ │ │  Units         : 24                                             │  │
+ │ │  Submitted     : Jun 10, 2025 2:30 PM                           │  │
+ │ └─────────────────────────────────────────────────────────────────┘  │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ──────────────────────────────────────────────────────────────────────────────
+ PHASE 5 — PROGRAM COORDINATOR ADVISING FORM INTAKE [UPDATED — IN-SYSTEM APPROVAL REMOVED]
+ In-system LOI approval was removed from GRADUS (see Removal-Plan.md).
+ The updated coordinator role: receive printed advising form → validate completeness
+ → forward to main campus. No in-system approval, enrollment creation, or classlist import.
+ The detailed steps below describe the old in-system approval flow for reference only.
+ ──────────────────────────────────────────────────────────────────────────────
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 5.1 — Program Coordinator Admin Sees LOI Dashboard              │
+ │ Location: Program Coordinator Portal → Enrollment → Letters of Intent │
+ │                                                                       │
+ │ Filters:                                                              │
+ │  Term      : 1st Semester 2025-2026                                   │
+ │  Program   : All                                                      │
+ │  Year Level: All                                                      │
+ │  Status    : Pending                                                  │
+ │                                                                       │
+ │ List Display:                                                         │
+ │ ┌─────────────────────────────────────────────────────────────────┐  │
+ │ │ PENDING LETTERS OF INTENT (25 total)                           │  │
+ │ ├─────────────────────────────────────────────────────────────────┤  │
+ │ │ ID               STUDENT           PROGRAM  SECTION  UNITS     │  │
+ │ │ ──────────────   ───────────────   ──────   ──────   ─────     │  │
+ │ │ LOI-2025309289   Dela Cruz, J.S.   BSIT     1-A      24        │  │
+ │ │ LOI-2025309290   Santos, Maria P.  BSIT     1-A      24        │  │
+ │ │ LOI-2025309291   Reyes, Anna M.    BSIT     1-B      24        │  │
+ │ │ ...                                                             │  │
+ │ └─────────────────────────────────────────────────────────────────┘  │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 5.2 — Program Coordinator Admin Clicks on LOI to Review         │
+ │ Action: LOI Detail Page Opens                                         │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 5.3 — Program Coordinator Admin Reviews LOI Details             │
+ │                                                                       │
+ │ Display:                                                              │
+ │ ┌─────────────────────────────────────────────────────────────────┐  │
+ │ │ LETTER OF INTENT DETAILS                                        │  │
+ │ │ ID: LOI-2025309289-2025-1S                                      │  │
+ │ ├─────────────────────────────────────────────────────────────────┤  │
+ │ │                                                                 │  │
+ │ │ STUDENT INFORMATION:                                            │  │
+ │ │  Student Number : 2025309289                                    │  │
+ │ │  Name           : Dela Cruz, Juan Santos                        │  │
+ │ │  Program        : BSIT                                          │  │
+ │ │  Year Level     : 1 (FRESH STUDENT) ✅                          │  │
+ │ │  Standing       : REGULAR ✅                                    │  │
+ │ │                                                                 │  │
+ │ │ ENROLLMENT DETAILS:                                             │  │
+ │ │  Term           : 1st Semester 2025-2026                        │  │
+ │ │  Section        : BSIT 1-A                                      │  │
+ │ │  Total Subjects : 8                                             │  │
+ │ │  Total Units    : 24                                            │  │
+ │ │  Submitted      : Jun 10, 2025 2:30 PM                          │  │
+ │ │                                                                 │  │
+ │ │ SUBJECTS TO BE ENROLLED:                                        │  │
+ │ │  ✅ FILIPINO 113  (3 units)                                     │  │
+ │ │  ✅ CC 113(B)     (3 units)                                     │  │
+ │ │  ✅ CC 123(A)     (3 units)                                     │  │
+ │ │  ✅ CC 123(B)     (3 units)                                     │  │
+ │ │  ✅ FIL 113       (3 units)                                     │  │
+ │ │  ✅ PE 112        (2 units)                                     │  │
+ │ │  ✅ NSTP 1        (3 units)                                     │  │
+ │ │  ✅ MATH 113      (3 units)                                     │  │
+ │ │                                                                 │  │
+ │ │ VALIDATION CHECKS:                                              │  │
+ │ │  ✅ Student is FRESH (no history required)                      │  │
+ │ │  ✅ Standing is REGULAR                                         │  │
+ │ │  ✅ Section matches year level (1)                              │  │
+ │ │  ✅ Section is published                                        │  │
+ │ │  ✅ Section has available slots (35/40)                         │  │
+ │ │  ✅ No duplicate LOI for this term                              │  │
+ │ │                                                                 │  │
+ │ │ Result: ✅ ELIGIBLE FOR APPROVAL                                │  │
+ │ │                                                                 │  │
+ │ │ [Reject LOI]  [Approve LOI]                                     │  │
+ │ │                                                                 │  │
+ │ └─────────────────────────────────────────────────────────────────┘  │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 5.4 — Program Coordinator Admin Clicks "Approve LOI"           │
+ │ Action: Confirmation Dialog Appears                                   │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 5.5 — Confirmation Dialog                                       │
+ │                                                                       │
+ │ ┌─────────────────────────────────────────────────────────────────┐  │
+ │ │ CONFIRM APPROVAL                                                │  │
+ │ ├─────────────────────────────────────────────────────────────────┤  │
+ │ │                                                                 │  │
+ │ │ Approve LOI for Dela Cruz, Juan S.?                             │  │
+ │ │                                                                 │  │
+ │ │ This will automatically enroll the student in all 8 subjects    │  │
+ │ │ under BSIT 1-A (including NSTP 1).                              │  │
+ │ │                                                                 │  │
+ │ │ [Cancel]  [Confirm Approval]                                    │  │
+ │ │                                                                 │  │
+ │ └─────────────────────────────────────────────────────────────────┘  │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 5.6 — Program Coordinator Admin Confirms Approval               │
+ │ Button: "Confirm Approval"                                            │
+ │                                                                       │
+ │ Table: letters_of_intent                                              │
+ │ Action: UPDATE                                                        │
+ │ WHERE: loi_id = "LOI-2025309289-2025-1S"                              │
+ │ SET:                                                                  │
+ │   status       = "approved"                                           │
+ │   approved_by  = "program_coordinator_admin_user_id"                  │
+ │   approved_at  = NOW()                                                │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 5.7 — System Triggers Auto-Enrollment                           │
+ │ Action: Proceed to Phase 6                                            │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ──────────────────────────────────────────────────────────────────────────────
+ PHASE 6 — AUTO-ENROLLMENT CREATION
+ ──────────────────────────────────────────────────────────────────────────────
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 6.1 — System Fetches Section Subjects from Schedule             │
+ │                                                                       │
+ │ Query:                                                                │
+ │   SELECT subject_id FROM schedule_entries                             │
+ │   WHERE section_id = 'BSIT-1-A'                                       │
+ │   AND term_id = '2025-2026-1S'                                        │
+ │   AND schedule_status = 'published'                                   │
+ │                                                                       │
+ │ Result: 7 subjects                                                    │
+ │   FILIPINO113, CC113B, CC123A, CC123B, FIL113, PE112, MATH113         │
+ │                                                                       │
+ │ Note: NSTP not in schedule_entries (not a timetable block)            │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 6.2 — System Fetches NSTP from Curriculum                       │
+ │                                                                       │
+ │ Query:                                                                │
+ │   SELECT id FROM subjects                                             │
+ │   WHERE subject_type = 'nstp'                                         │
+ │   AND year_level = 1                                                  │
+ │   AND semester = 1                                                    │
+ │   AND curriculum_version_id = (student's curriculum)                  │
+ │                                                                       │
+ │ Result: NSTP1                                                         │
+ │                                                                       │
+ │ Total subjects to enroll: 8 (7 from schedule + 1 NSTP)                │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 6.3 — System Creates Enrollment Records (BULK INSERT)           │
+ │                                                                       │
+ │ Table: enrollments                                                    │
+ │ Action: BULK INSERT (8 records in single transaction)                │
+ │                                                                       │
+ │ Records:                                                              │
+ │ [                                                                     │
+ │   {                                                                   │
+ │     student_id: 2025309289,                                           │
+ │     subject_id: "FILIPINO113",                                        │
+ │     section_id: "BSIT-1-A",                                           │
+ │     term_id: "2025-2026-1S",                                          │
+ │     enrollment_type: "regular",                                       │
+ │     status: "enrolled",                                               │
+ │     enrolled_at: NOW()                                                │
+ │   },                                                                  │
+ │   {                                                                   │
+ │     student_id: 2025309289,                                           │
+ │     subject_id: "CC113B",                                             │
+ │     section_id: "BSIT-1-A",                                           │
+ │     term_id: "2025-2026-1S",                                          │
+ │     enrollment_type: "regular",                                       │
+ │     status: "enrolled",                                               │
+ │     enrolled_at: NOW()                                                │
+ │   },                                                                  │
+ │   {                                                                   │
+ │     student_id: 2025309289,                                           │
+ │     subject_id: "CC123A",                                             │
+ │     section_id: "BSIT-1-A",                                           │
+ │     term_id: "2025-2026-1S",                                          │
+ │     enrollment_type: "regular",                                       │
+ │     status: "enrolled",                                               │
+ │     enrolled_at: NOW()                                                │
+ │   },                                                                  │
+ │   {                                                                   │
+ │     student_id: 2025309289,                                           │
+ │     subject_id: "CC123B",                                             │
+ │     section_id: "BSIT-1-A",                                           │
+ │     term_id: "2025-2026-1S",                                          │
+ │     enrollment_type: "regular",                                       │
+ │     status: "enrolled",                                               │
+ │     enrolled_at: NOW()                                                │
+ │   },                                                                  │
+ │   {                                                                   │
+ │     student_id: 2025309289,                                           │
+ │     subject_id: "FIL113",                                             │
+ │     section_id: "BSIT-1-A",                                           │
+ │     term_id: "2025-2026-1S",                                          │
+ │     enrollment_type: "regular",                                       │
+ │     status: "enrolled",                                               │
+ │     enrolled_at: NOW()                                                │
+ │   },                                                                  │
+ │   {                                                                   │
+ │     student_id: 2025309289,                                           │
+ │     subject_id: "PE112",                                              │
+ │     section_id: "BSIT-1-A",                                           │
+ │     term_id: "2025-2026-1S",                                          │
+ │     enrollment_type: "regular",                                       │
+ │     status: "enrolled",                                               │
+ │     enrolled_at: NOW()                                                │
+ │   },                                                                  │
+ │   {                                                                   │
+ │     student_id: 2025309289,                                           │
+ │     subject_id: "NSTP1",                                              │
+ │     section_id: "BSIT-1-A",                                           │
+ │     term_id: "2025-2026-1S",                                          │
+ │     enrollment_type: "regular",                                       │
+ │     status: "enrolled",                                               │
+ │     enrolled_at: NOW()                                                │
+ │   },                                                                  │
+ │   {                                                                   │
+ │     student_id: 2025309289,                                           │
+ │     subject_id: "MATH113",                                            │
+ │     section_id: "BSIT-1-A",                                           │
+ │     term_id: "2025-2026-1S",                                          │
+ │     enrollment_type: "regular",                                       │
+ │     status: "enrolled",                                               │
+ │     enrolled_at: NOW()                                                │
+ │   }                                                                   │
+ │ ]                                                                     │
+ │                                                                       │
+ │ Result: 8 enrollment records created ✅                               │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 6.4 — System Updates Section Enrollment Count                   │
+ │                                                                       │
+ │ Table: sections                                                       │
+ │ Action: UPDATE                                                        │
+ │ WHERE: section_id = "BSIT-1-A"                                        │
+ │ SET: enrolled_count = enrolled_count + 1                              │
+ │                                                                       │
+ │ Before: 35/40 students                                                │
+ │ After:  36/40 students                                                │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 6.5 — Student Now Appears in ALL Teacher Class Lists            │
+ │                                                                       │
+ │ Teachers can now see "Dela Cruz, Juan S. (2025309289)" in their      │
+ │ class rosters for:                                                    │
+ │  • FILIPINO 113  (Prof. Reyes)                                        │
+ │  • CC 113(B)     (Prof. Santos)                                       │
+ │  • CC 123(A)     (Prof. Garcia)                                       │
+ │  • CC 123(B)     (Prof. Torres)                                       │
+ │  • FIL 113       (Prof. Lopez)                                        │
+ │  • PE 112        (Prof. Ramos)                                        │
+ │  • NSTP 1        (Prof. Villa)                                        │
+ │  • MATH 113      (Prof. Cruz)                                         │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 6.6 — System Sends Email Notification to Student                │
+ │                                                                       │
+ │ Email Template:                                                       │
+ │ ┌─────────────────────────────────────────────────────────────────┐  │
+ │ │ Subject: Enrollment Approved                                    │  │
+ │ │                                                                 │  │
+ │ │ Dear Dela Cruz, Juan Santos,                                    │  │
+ │ │                                                                 │  │
+ │ │ Welcome to PSU Sto. Tomas Campus!                               │  │
+ │ │                                                                 │  │
+ │ │ Your Letter of Intent has been approved.                        │  │
+ │ │                                                                 │  │
+ │ │ You are now officially enrolled in:                             │  │
+ │ │  • Section: BSIT 1-A                                            │  │
+ │ │  • Semester: 1st Semester 2025-2026                             │  │
+ │ │  • Subjects: 8 subjects                                         │  │
+ │ │  • Total Units: 24 units                                        │  │
+ │ │                                                                 │  │
+ │ │ View your schedule: https://gradus.psu.edu.ph/schedule          │  │
+ │ │                                                                 │  │
+ │ │ Welcome and good luck!                                          │  │
+ │ │                                                                 │  │
+ │ │ PSU Sto. Tomas Registrar                                        │  │
+ │ └─────────────────────────────────────────────────────────────────┘  │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 6.7 — In-App Notification Sent                                  │
+ │                                                                       │
+ │ Notification:                                                         │
+ │   🎉 Enrollment Successful!                                           │
+ │   You are now enrolled in BSIT 1-A for 1st Semester 2025-2026        │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ┌───────────────────────────────────────────────────────────────────────┐
+ │ Step 6.8 — Student Logs In and Sees Final Schedule                   │
+ │                                                                       │
+ │ Dashboard Display:                                                    │
+ │ ┌─────────────────────────────────────────────────────────────────┐  │
+ │ │ ENROLLMENT STATUS                                               │  │
+ │ ├─────────────────────────────────────────────────────────────────┤  │
+ │ │  Status        : ✅ ENROLLED                                     │  │
+ │ │  Section       : BSIT 1-A                                       │  │
+ │ │  Semester      : 1st Semester 2025-2026                         │  │
+ │ │  Total Subjects: 8                                              │  │
+ │ │  Total Units   : 24                                             │  │
+ │ │  Enrolled On   : Jun 10, 2025 3:00 PM                           │  │
+ │ └─────────────────────────────────────────────────────────────────┘  │
+ │                                                                       │
+ │ ┌─────────────────────────────────────────────────────────────────┐  │
+ │ │ MY CLASS SCHEDULE                                               │  │
+ │ ├─────────────────────────────────────────────────────────────────┤  │
+ │ │                                                                 │  │
+ │ │ DAY       TIME          SUBJECT       TEACHER       ROOM        │  │
+ │ │ ───────   ──────────    ───────────   ───────────   ─────────   │  │
+ │ │ Mon/Wed   7:00-8:30     FILIPINO 113  Prof. Reyes   RM 103      │  │
+ │ │ Mon/Wed   8:30-10:00    CC 113(B)     Prof. Santos  CL 1        │  │
+ │ │ Mon/Wed   10:00-11:30   MATH 113      Prof. Cruz    RM 103      │  │
+ │ │ Tue/Thu   7:00-8:30     CC 123(A)     Prof. Garcia  RM 1        │  │
+ │ │ Tue/Thu   8:30-10:00    FIL 113       Prof. Lopez   RM 1        │  │
+ │ │ Wed/Fri   1:00-2:30     CC 123(B)     Prof. Torres  CL 2        │  │
+ │ │ Friday    3:00-5:00     PE 112        Prof. Ramos   PE AREA     │  │
+ │ │ Saturday  8:00-11:00    NSTP 1        Prof. Villa   (TBA)       │  │
+ │ │                                                                 │  │
+ │ │ Total: 8 subjects / 24 units                                    │  │
+ │ │                                                                 │  │
+ │ │ [📄 Print Schedule]  [📥 Download PDF]                          │  │
+ │ │                                                                 │  │
+ │ └─────────────────────────────────────────────────────────────────┘  │
+ └───────────────────────────────────────────────────────────────────────┘
+
+ ──────────────────────────────────────────────────────────────────────────────
+ FRESH STUDENT FLOW COMPLETE ✅
+ ──────────────────────────────────────────────────────────────────────────────
+
+ SUMMARY:
+  ✅ Google Sign-In (PSU email only)
+  ✅ Profile Completion
+  ✅ Auto-Classification (FRESH detected, no import needed)
+  ✅ Wait for Schedule Publication
+  ✅ Select section and generate printable advising form
+  ✅ Submit printed advising form (hard copy) directly to main campus
+  ✅ Main campus processes official enrollment outside GRADUS
+  ✅ Student Ready to Attend Classes
+
+ KEY POINTS:
+  • No academic history import required
+  • Automatically classified as REGULAR
+  • Automatically assigned to Year Level 1
+  • NSTP included in enrollment (even though not in schedule grid)
+  • Saturday blocked for regular classes (NSTP day)
+  • Full academic load (24 units)
+  • Block section enrollment (fixed section)
+  • Eligible for academic honors
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Due to character limits, I'll stop here for Fresh Student flow.
+
+**Would you like me to continue with:**
+- [4] COMPLETE FLOW: REGULAR STUDENT
+- [5] COMPLETE FLOW: IRREGULAR STUDENT
+- Or skip to specific sections?
+
+Let me know and I'll provide the rest! 🎯

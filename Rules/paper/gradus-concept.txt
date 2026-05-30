@@ -1,0 +1,183 @@
+BSIT CAPSTONE PROJECT: CONCEPT PAPER
+
+Title
+GRADUS: An Academic Governance Platform for Scheduling, Grading, Progress Tracking, and Recognition at Pampanga State University - Sto. Tomas Campus
+
+Introduction
+Academic operations at Pampanga State University - Sto. Tomas Campus involve many interconnected activities, but these activities are often managed through separate manual processes. Schedule planning, advising plan review, grade consolidation, and recognition checking may be done by different offices with different tools, which slows down decision-making and creates room for inconsistencies.
+
+In schedule preparation, administrators must manually align teacher assignments, room constraints, section demand, and time-slot availability. This setup can produce overlapping teacher loads, room conflicts, and repeated revisions before final release. When schedule publication is delayed or unstable, advising and class operations are affected immediately.
+
+Advising workflows are also complex, especially for irregular students. Their evaluation requires checking prerequisites, curriculum progression, retake conditions, section availability, and time conflicts across offerings. Without a governed platform, students must submit their advising forms physically to the program coordinator, who then forwards them to main campus for official enrollment processing. This process becomes repetitive, heavily dependent on manual validation, and vulnerable to inconsistent decisions.
+
+On the grading side, teachers may compute grades correctly in spreadsheets, but governance issues remain when grade status transitions, student visibility rules, and compliance checks are not managed in one system. Academic recognition adds another layer of complexity because regular standing, full load, and grade thresholds must be validated consistently and fairly.
+
+GRADUS is proposed to address these gaps through a policy-aligned platform that unifies scheduling, advising, grading, progress tracking, and recognition in one governed workflow. The intent is not only automation, but also stronger consistency, traceability, and accountability in campus academic operations.
+
+Project Purpose
+This project aims to design and implement GRADUS as an academic governance platform that supports policy-driven decision-making across core academic workflows. The system is intended to reduce manual workload, improve record consistency, and provide clear operational controls for administrators, teachers, and students.
+
+Specifically, GRADUS is designed to ensure that schedule publication, advising plan generation, grade visibility, and recognition decisions follow explicit institutional rules. Students submit a Letter of Intent through a Google Drive link provided by the institution for official enrollment. Students who use the advising feature also submit the generated advising form as a hard copy to the program coordinator, who forwards it together with the LOI to main campus for official enrollment processing. By centralizing these workflows, the system is expected to provide faster processing, clearer accountability, and more reliable academic outputs.
+
+Research Objectives
+General Objective:
+To develop and evaluate a rule-based academic governance platform that integrates scheduling, advising, grading, progress tracking, and recognition workflows for PSU Sto. Tomas Campus.
+
+Specific Objectives:
+1. Develop a deterministic scheduling workflow that prevents teacher, section, and venue conflicts before publication.
+2. Implement role-based access and institutional authentication controls for secure academic transactions.
+3. Build a student registration workflow where new students sign in with their institutional Google account, complete their profile, and are directed to the dashboard. Existing students are directed to the dashboard immediately upon sign-in. No classification or standing evaluation is performed during registration or dashboard entry.
+4. Implement an advising assistance feature within the mobile app dashboard, accessible to all students and recommended for those who know they are irregular. The feature includes a PSU portal WebView scan for retake subject identification, prerequisite checks, conflict detection against published schedules, and printable advising form generation for hard copy submission to the program coordinator, who forwards it to main campus for official enrollment processing.
+5. Provide a grading workflow that supports teacher encoding, status control, and posted-only student visibility.
+6. Integrate progress tracking through centralized academic records and computed grade outcomes.
+7. Automate recognition qualification checking for Dean's List and President's List based on policy criteria.
+8. Evaluate the system's effect on process consistency, turnaround time, and administrative workload.
+
+Scope and Limitations
+This study focuses on the design and implementation of GRADUS for PSU Sto. Tomas Campus.
+
+Scope:
+Academic policy constraints
+- Semesters are limited to 1 and 2 only.
+- Year level values are limited to 1 through 4.
+
+1. Scheduling Governance
+- Rule-based schedule generation and validation.
+- Conflict prevention for teacher overlap, room double-booking, and section time collisions.
+- Program and venue compatibility checks.
+- Draft-to-reviewed-to-published lifecycle control for official schedule release.
+
+2. Student Registration and Dashboard Access
+- Institutional email authentication and profile completion.
+- New students sign in with their PSU Google account, complete their profile, and are directed to the dashboard.
+- Existing students are directed to the dashboard immediately upon sign-in.
+- No classification or standing evaluation is performed during registration or dashboard entry.
+
+3. Advising And Enrollment Support
+- An advising assistance feature is available to all students in the mobile app dashboard. The feature is recommended for students who know they are irregular.
+- The advising feature opens the PSU portal evaluation page via WebView. The student scans their evaluation results. The system suggests retakeable back subjects first, followed by current-year subjects with satisfied prerequisites. No advance subjects are allowed.
+- The student selects subjects from the suggestions. The system checks the published schedule for time conflicts across sections.
+- If no conflicts are found, the student generates a printable advising form and submits it as a hard copy to the program coordinator, who forwards it to main campus for official enrollment processing.
+- Official enrollment finalization for all students is handled outside the system by main campus.
+- Teacher classlist import via subject-level Excel files downloaded from the PSU portal, covering all enrolled students.
+- Super Admin retains cross-department authority over scheduling and system governance decisions.
+
+4. Grading and Progress Tracking
+- Teacher imports the classlist from the PSU portal via Excel. The imported file contains the list of enrolled students with no final grades.
+- Teacher encodes grade components per student inside GRADUS Desktop. Encoded grades remain in draft status and are not visible to students until posted.
+- After encoding, the teacher exports the grade sheet from GRADUS. The exported file now contains the computed final grades.
+- Centralized grade records and GWA computation for enrolled subjects.
+- Posted-only visibility in student-facing views.
+
+5. Recognition Workflow
+- Automated eligibility checks for Dean's List and President's List after all grades for the term are posted.
+- A student qualifies only if all four conditions are met:
+  1. No back subjects — all enrolled subjects belong to the student's current year level and current semester only. Any retake subject from a previous year level or semester disqualifies the student.
+  2. Full standard curriculum load — enrolled units must match the exact curriculum load defined for the student's current year level and semester.
+  3. All subjects passed — no FAILED, DROPPED, or INC remarks in any enrolled subject for the term.
+  4. GWA threshold met — President's List: 1.00 to 1.25, Dean's List: 1.26 to 1.75. GWA is computed as the sum of (equivalent grade multiplied by credit units) divided by total credit units.
+- If all conditions are satisfied, the system automatically records the honor, generates a downloadable digital certificate, and publishes the result. No manual application is required.
+- If any condition fails, the student is not qualified for that term.
+
+Limitations:
+1. The implementation is intended for PSU Sto. Tomas Campus and is not designed as a multi-campus platform.
+2. Scheduling logic is deterministic and rule-based; AI-based optimization is outside the scope.
+3. Enrollment finalization for all students is handled outside the system by main campus. The advising feature depends on the availability of evaluation records on the PSU portal and the publication of schedules. The mobile WebView scan reads the PSU portal evaluation page to identify retakeable subjects but does not import or store historical academic data into GRADUS.
+4. Semester values are limited to 1 and 2, and year levels are limited to 1 through 4.
+5. Import-dependent data quality is affected by the availability and consistency of source academic records.
+6. Recognition evaluation is term-based and does not compute cumulative multi-term institutional ranking models.
+7. GRADUS does not automate equivalency evaluation for students from other institutions.
+
+Benefits/Anticipated Outcomes
+- Students: clearer advising pathways, more consistent schedule access, and reliable visibility of official posted grades and outcomes.
+- Teachers: cleaner grading workflow, reduced manual reconciliation, and better alignment between class lists and posted records through import.
+- University Administration: stronger governance controls, more transparent operations, and improved confidence in academic records.
+- Academic Operations: reduced processing delays, fewer workflow inconsistencies, and better audit readiness across modules.
+- Future Researchers: a practical reference for policy-driven academic platforms in higher education settings.
+
+Methodology
+This project follows a mixed-methods and iterative development approach, combining workflow analysis, rule modeling, system implementation, and validation.
+
+1. Requirements Gathering and Policy Mapping
+- Conduct stakeholder interviews and process walkthroughs with administrative and academic users.
+- Document current pain points in scheduling, advising, grading, and recognition workflows.
+- Translate institutional rules into explicit system requirements and decision checkpoints.
+
+2. Process Design and Rule Modeling
+- Define end-to-end flows for student registration and direct dashboard access, advising plan creation via WebView scan and subject selection, schedule publication, printable advising form generation, teacher classlist import, and grade visibility control.
+- Model governance rules such as posted-only grade visibility and published-only advising plan access.
+- Produce process artifacts (flowcharts, role boundaries, and decision matrices) for implementation reference.
+
+3. System Architecture and Data Design
+- Design modular components for web-based administration and student workflows.
+- Define data structures for schedules, advising plans, teacher classlist imports, grading records, and recognition outputs.
+- Apply role-based access design for super admin, teacher, and student actors.
+
+4. Development and Integration
+- Implement core modules incrementally, prioritizing policy-critical workflows first.
+- Integrate scheduling, advising, grading, and recognition modules into a centralized data environment.
+- Implement synchronization behavior for teacher grading workflows and status-based visibility controls, including teacher classlist import support.
+
+5. Testing and Validation
+- Perform functional testing for each module and integration testing across workflows.
+- Validate rule compliance for prerequisite checks, conflict detection, publication gating, advising plan generation, and grade visibility.
+- Run scenario-based tests for student registration, advising plan generation, and enrollment support pathways.
+- Collect user feedback on clarity, speed, and reliability of process outputs.
+
+6. Evaluation and Refinement
+- Compare workflow outcomes before and after system use using operational indicators.
+- Refine rules, interfaces, and process checkpoints based on test findings and stakeholder feedback.
+- Finalize deployment-ready documentation and user guidance.
+
+Proponents:
+1. [Insert Full Name] / [Insert Contact Number] / [Insert School Email]
+2. [Insert Full Name] / [Insert Contact Number] / [Insert School Email]
+3. [Insert Full Name] / [Insert Contact Number] / [Insert School Email]
+4. [Insert Full Name] / [Insert Contact Number] / [Insert School Email]
+5. [Insert Full Name] / [Insert Contact Number] / [Insert School Email]
+
+Technology Stack Used in Each System
+1. Web System (Student and Super Admin Portal)
+- Programming languages: TypeScript, JavaScript, SQL
+- Frontend framework: Next.js 16.2.4 (App Router) with React 19.2.4
+- API framework: Next.js Route Handlers (API routes)
+- Styling stack: CSS Modules (primary), Tailwind CSS 4, PostCSS
+- Runtime and package tools: Node.js, npm scripts (dev, build, start, lint)
+- Code quality tools: ESLint 9, eslint-config-next 16.2.4
+
+2. Desktop System (Teacher Grading Workflow)
+- Application framework: Electron
+- Programming language: JavaScript
+- Data behavior: offline-first grade encoding with online sync
+- Integration behavior: student view updates only after sync and posted status
+- Excel processing: xlsx library for PSU portal classlist import and grade sheet export
+
+3. Mobile System (Student App)
+- Mobile framework: React Native with Expo
+- Programming language: JavaScript
+- Integration tool: React Native WebView
+- Usage scope: advising plan drafting via PSU portal WebView scan for retake subject identification, prerequisite checking, conflict detection against published schedules, and printable advising form generation; posted grade and recognition viewing for all students
+
+4. Backend and Data Services
+- Backend platform: Supabase
+- Database engine: PostgreSQL
+- Realtime service: Supabase Realtime channels/subscriptions
+- Authentication service: Supabase Auth with Google Sign-In
+- Data access and security: role-based policy checks, API validation controls, Row Level Security (RLS)
+
+5. Authentication and Access Control
+- Identity provider: Google Sign-In
+- Institutional policy: restricted to @pampangastateu.edu.ph accounts
+- Role model: super admin, teacher, student
+- Visibility policy: students can view posted grades only
+
+6. Core Rule and Governance Layer
+- Decision model: deterministic rule-based logic
+- Governed modules: scheduling, advising eligibility and plan generation, grading status flow, recognition qualification
+- Compliance model: publish/post state gates, role-scoped permissions, auditable policy execution
+- AI/ML scope: not used for institutional decision execution
+
+7. Development and Workflow Tools
+- Source control: Git-based version tracking
+- Environment and execution: Node.js local runtime with npm
+- Linting and standards: ESLint policy checks during development

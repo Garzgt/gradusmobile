@@ -1,0 +1,1 @@
+Dont edit any codes for GradusTableStructure.sql if you want to edit something drop query so i can paste it in supabase sql editor

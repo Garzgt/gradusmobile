@@ -1,0 +1,1006 @@
+
+================================================================================
+CORE DEVELOPMENT PRINCIPLES
+================================================================================
+
+1. REALTIME UPDATES (REQUIRED WHERE NEEDED)
+--------------------------------------------------------------------------------
+  - Use Supabase realtime for data that benefits from live updates
+   - Use supabase channel subscriptions for live updates
+   - Critical tables requiring realtime:
+     * schedule_entries
+     * schedule_conflicts
+     * schedule_generation_logs
+     * academic_terms
+     * sections
+     * teachers
+     * venues
+     * grades
+     * grade_components
+     * notifications (grade-post alerts)
+   - Student grade views must subscribe to posted-grade updates only
+     (status = 'posted')
+   - Teacher/admin grade views can subscribe to both draft and posted updates
+  - Subscribe on mount and unsubscribe on unmount when realtime is enabled
+   - Handle INSERT, UPDATE, DELETE events appropriately
+
+2. SKELETON LOADING (RECOMMENDED)
+--------------------------------------------------------------------------------
+  - Use skeleton loading for primary data-fetching views
+   - Never show blank screens or empty content while loading
+   - Use the Skeleton component from components/ui/Skeleton.jsx
+   - Match skeleton layout structure to actual content layout
+   - Show skeletons during:
+     * Initial data fetch
+     * Page navigation
+     * Form submission with data reload
+     * Filter or search operations
+  - Use page-appropriate loading UX (skeleton, progress view, or spinner)
+
+3. RESPONSIVENESS (MANDATORY)
+--------------------------------------------------------------------------------
+   - All layouts MUST be fully responsive across mobile, tablet, desktop
+  - Use project-consistent styling (CSS Modules-first; Tailwind optional)
+   - Breakpoints to follow:
+     * sm  (640px)  - mobile landscape, small tablets
+     * md  (768px)  - tablets
+     * lg  (1024px) - desktop
+     * xl  (1280px) - large desktop
+   - Test every page on all breakpoints
+   - Mobile-first approach: design for mobile, then scale up
+   - Ensure touch targets are at least 44x44px on mobile
+   - Stack layouts vertically on mobile, use grid/columns on larger screens
+
+4. STYLING ARCHITECTURE (MANDATORY)
+--------------------------------------------------------------------------------
+   Separation of concerns:
+
+   CSS Modules handle:
+     * Layout and spacing (common in current codebase)
+     * Custom button styles
+     * Hover effects
+     * Transitions and transforms
+     * Component-specific animations
+     * Complex states
+
+   Tailwind handles (optional):
+     * Utility-first helpers where already adopted
+
+   Global CSS (styles folder) handles:
+     * Color variables (for reference only)
+     * Spacing scale
+     * Animation keyframes
+     * Typography scale
+     * Shadow definitions
+
+5. ANIMATIONS (MANDATORY)
+--------------------------------------------------------------------------------
+   - All animations defined in styles/animations.css
+   - Apply via utility classes or CSS modules
+   - Never create one-off animations inline
+
+   Standard animations:
+     animate-fade-in       -> page and content entry
+     animate-slide-in-right -> modals, sidebars from right
+     animate-slide-in-left  -> sidebars from left
+     animate-slide-down     -> dropdowns, notifications
+     animate-scale-in       -> popovers, tooltips, dialogs
+     animate-pulse          -> loading indicators, live status
+     animate-shimmer        -> skeleton loading backgrounds
+
+   Animation guidelines:
+     - Keep animations subtle and fast (200-300ms)
+     - Use ease-in-out or ease-out timing
+     - Avoid animations on performance-critical renders
+     - Reduce motion for accessibility when needed
+
+6. COLOR SCHEME (MANDATORY)
+--------------------------------------------------------------------------------
+   Primary theme: RED
+
+   CRITICAL RULE:
+   Use HARDCODED hex colors directly in components and CSS modules.
+   DO NOT use CSS variables like var(--primary-500) - they don't resolve properly.
+
+   Red Color Palette (HARDCODED VALUES):
+     Primary 500 (main red) : #ef4444
+     Primary 600 (hover)    : #dc2626
+     Primary 700 (active)   : #b91c1c
+     Primary 900 (deep accent) : #7f1d1d
+
+   Supporting colors:
+     Neutrals : Gray scale for text, borders, backgrounds
+     Success  : Green  (#16a34a)
+     Warning  : Amber  (#f59e0b)
+     Info     : Blue   (#3b82f6)
+     Error    : Red    (#dc2626)
+
+   Usage rules:
+     - Buttons     : use hardcoded hex in CSS module files
+     - Backgrounds : use hardcoded hex (#ef4444, #dc2626, etc.)
+     - Text        : use hardcoded hex or Tailwind utilities
+     - Borders     : use hardcoded hex or Tailwind border-red-500
+     - Sidebar background : use light neutral (white/light gray) to match
+                           the main content shell
+     - Sidebar accents    : use the same red palette (#ef4444, #dc2626,
+                           #b91c1c, #7f1d1d) for active/hover states
+
+   Tailwind integration:
+     - Use Tailwind red utilities: bg-red-600, text-red-700, border-red-500
+     - These are safe to use and resolve properly
+     - Keep usage consistent across project
+
+   Special color exceptions (intentional differentiation):
+     - Venue Type Tags:
+       * Lecture     : #3b82f6 (blue)
+       * Lab         : #a855f7 (purple)
+       * Open Area   : #22c55e (green)
+       * Off Campus  : #f97316 (orange)
+     - Subject Type Tags: each has distinct color per type
+
+================================================================================
+FILE STRUCTURE CONVENTIONS
+================================================================================
+
+1. COMPONENT FILE NAMING
+--------------------------------------------------------------------------------
+   Component file : PascalCase.jsx         (e.g., TeacherList.jsx)
+   CSS Module     : PascalCase.module.css  (e.g., TeacherList.module.css)
+   Service file   : camelCase.js           (e.g., teacherService.js)
+   Hook file      : useCamelCase.js        (e.g., useTeachers.js)
+
+2. CO-LOCATION
+--------------------------------------------------------------------------------
+   - Each route feature has its own components and services folder
+   - Keep components close to where they are used
+   - Shared components:
+     * components/ui
+     * components/layout
+     * components/shared
+   - Feature-specific components:
+     * app/(admin)/feature/components
+
+3. SERVICE LAYER
+--------------------------------------------------------------------------------
+   - Every feature has a service file in services folder
+   - Services handle all Supabase queries via fetch() to API routes
+   - No direct Supabase calls in components
+   - Services return consistent data shapes
+   - Services handle error logging
+
+4. HOOKS LAYER
+--------------------------------------------------------------------------------
+   - Custom hooks in hooks folder at root
+   - Hooks manage state, subscriptions, side effects
+   - Hooks call service functions
+   - Hooks handle loading, error states
+   - Hooks include realtime subscriptions
+
+================================================================================
+CODE QUALITY STANDARDS
+================================================================================
+
+1. ERROR HANDLING
+--------------------------------------------------------------------------------
+   - Every async operation MUST have try-catch
+   - Display user-friendly error messages via Toast component
+   - Log errors to console for debugging
+   - Never expose raw database errors to users
+   - Provide fallback UI for error states
+
+2. LOADING STATES
+--------------------------------------------------------------------------------
+   - Every data fetch MUST show loading state
+   - Use skeleton components, not spinners in most cases
+   - Disable buttons during submission
+   - Show inline spinners for button actions
+   - Prevent double-submission with loading flags
+
+3. FORM VALIDATION
+--------------------------------------------------------------------------------
+   - Validate on client before submitting
+   - Use validation utility functions from utils/validation.js
+   - Show field-level errors clearly
+   - Disable submit until form is valid
+   - Validate again on server/API route
+
+4. ACCESSIBILITY
+--------------------------------------------------------------------------------
+   - Use semantic HTML elements
+   - Provide ARIA labels where needed
+   - Ensure keyboard navigation works
+   - Maintain focus management in modals
+   - Use proper heading hierarchy
+   - Ensure sufficient color contrast
+   - Provide alt text for images
+
+5. PERFORMANCE
+--------------------------------------------------------------------------------
+   - Minimize re-renders with proper memoization
+   - Use React.memo for expensive components
+   - Lazy load heavy components when appropriate
+   - Optimize images (use Next.js Image component if needed)
+   - Debounce search inputs
+   - Paginate large lists
+   - Index Supabase queries properly
+
+6. GRADE VISIBILITY AND POSTING
+--------------------------------------------------------------------------------
+   - Capture grade components separately:
+     * attendance
+     * quizzes
+     * midterm exam
+     * final exam
+   - Use explicit grade status values:
+     * draft  (teacher/admin only)
+     * posted (student-visible)
+   - Student APIs and realtime feeds must return posted grades only
+   - Teacher/admin views can edit draft entries before posting
+   - Keep an audit trail for grade changes and posting actions
+   - If teacher encodes offline, student updates appear only after sync
+
+================================================================================
+SUPABASE INTEGRATION PATTERNS
+================================================================================
+
+1. CLIENT SETUP
+--------------------------------------------------------------------------------
+   lib/supabaseClient.js  -> browser-side queries, realtime
+   lib/supabaseAdmin.js   -> server-side/API routes ONLY
+   Never expose service role key to client
+   Store keys in .env.local file
+
+2. QUERY PATTERNS
+--------------------------------------------------------------------------------
+   - Use select() with specific columns, avoid select(*)
+   - Use single() when expecting one row
+   - Use maybeSingle() when row might not exist
+   - Chain filters efficiently
+   - Use RLS policies for security
+
+3. REALTIME PATTERNS
+--------------------------------------------------------------------------------
+  - One channel per table subscription
+  - Clean up subscriptions on unmount
+  - Handle all event types: INSERT, UPDATE, DELETE
+  - Update local state optimistically when possible
+  - Show toast notifications for relevant changes
+  - For student grade views, expose only posted entries
+  - For teacher/admin grade views, allow draft + posted entries with role checks
+
+   Standard pattern:
+     useEffect(() => {
+       const channel = supabase
+         .channel('unique_channel_name')
+         .on('postgres_changes',
+           { event: '*', schema: 'public', table: 'table_name' },
+           (payload) => {
+             console.log('[Realtime] changed:', payload);
+             fetchItems();
+           }
+         )
+         .subscribe();
+       return () => supabase.removeChannel(channel);
+     }, [fetchItems]);
+
+4. FILE UPLOAD PATTERNS
+--------------------------------------------------------------------------------
+   - Upload to storage buckets: teacher-avatars, admin-avatars
+   - Generate unique filenames (UUID or timestamp)
+   - Store only URL/path in database
+   - Set proper bucket policies (private by default)
+   - Handle upload errors gracefully
+   - Show upload progress when possible
+
+================================================================================
+API ROUTE PATTERNS
+================================================================================
+
+   CRITICAL: params is a Promise in Next.js 15+
+   Always await params before using:
+
+     export async function PUT(request, { params }) {
+       const { id } = await params;   // CORRECT
+       // ...
+     }
+
+     export async function PUT(request, { params }) {
+       const { id } = params;          // WRONG - params is a Promise
+     }
+
+   Applies to: ALL dynamic API routes (GET, PUT, DELETE, PATCH)
+
+   Standard API route structure:
+
+     import { supabaseAdmin } from '@/lib/supabaseAdmin';
+     import { NextResponse } from 'next/server';
+
+     export async function GET() {
+       try {
+         const { data, error } = await supabaseAdmin
+           .from('table_name')
+           .select('columns')
+           .order('column', { ascending: false });
+
+         if (error) throw error;
+         return NextResponse.json({ data }, { status: 200 });
+       } catch (error) {
+         console.error('[GET /api/route]', error);
+         return NextResponse.json(
+           { error: 'User-friendly error message.' },
+           { status: 500 }
+         );
+       }
+     }
+
+   All API routes must:
+     1. Use supabaseAdmin (NOT supabase client)
+     2. Await params for dynamic routes
+     3. Return NextResponse.json()
+     4. Try-catch all operations
+     5. Never expose raw DB errors to users
+     6. Handle duplicate constraint errors (code 23505) gracefully
+     7. Check for references before delete
+
+================================================================================
+SERVICE LAYER PATTERNS
+================================================================================
+
+   Services use fetch() to call API routes
+   Services do NOT call Supabase directly
+   Location: app/(admin)/feature/services/featureService.js
+
+   Standard service function:
+
+     export async function getItems() {
+       try {
+         const res = await fetch('/api/items', {
+           method: 'GET',
+           headers: { 'Content-Type': 'application/json' },
+         });
+         const json = await res.json();
+         if (!res.ok) throw new Error(json.error || 'Failed to fetch items.');
+         return { data: json.data, error: null };
+       } catch (error) {
+         console.error('[featureService.getItems]', error);
+         return { data: null, error: error.message };
+       }
+     }
+
+================================================================================
+PAGE STATE PATTERN
+================================================================================
+
+   Standard page.jsx pattern for any CRUD feature:
+
+     'use client';
+
+     import { useState, useEffect, useCallback } from 'react';
+     import { supabase } from '@/lib/supabaseClient';
+     import PageHeader from '@/components/shared/PageHeader';
+     import Modal from '@/components/ui/Modal';
+     import ConfirmDialog from '@/components/shared/ConfirmDialog';
+     import { ToastContainer } from '@/components/ui/Toast';
+
+     export default function FeaturePage() {
+       const [items, setItems]             = useState([]);
+       const [loading, setLoading]         = useState(true);
+       const [modalOpen, setModalOpen]     = useState(false);
+       const [selectedItem, setSelectedItem] = useState(null);
+       const [itemToDelete, setItemToDelete] = useState(null);
+       const [formLoading, setFormLoading] = useState(false);
+       const [deleteLoading, setDeleteLoading] = useState(false);
+       const [toasts, setToasts]           = useState([]);
+
+       const addToast = useCallback((message, type = 'success') => {
+         const id = Date.now();
+         setToasts(prev => [...prev, { id, message, type }]);
+       }, []);
+
+       const removeToast = useCallback((id) => {
+         setToasts(prev => prev.filter(t => t.id !== id));
+       }, []);
+
+       const fetchItems = useCallback(async () => {
+         try {
+           setLoading(true);
+           const { data, error } = await getItems();
+           if (error) throw new Error(error);
+           setItems(data || []);
+         } catch (err) {
+           addToast('Failed to load items.', 'error');
+         } finally {
+           setLoading(false);
+         }
+       }, [addToast]);
+
+       useEffect(() => { fetchItems(); }, [fetchItems]);
+
+       useEffect(() => {
+         const channel = supabase
+           .channel('feature_changes')
+           .on('postgres_changes',
+             { event: '*', schema: 'public', table: 'table_name' },
+             () => fetchItems()
+           )
+           .subscribe();
+         return () => supabase.removeChannel(channel);
+       }, [fetchItems]);
+
+       return (
+         <div>
+           <PageHeader title="Feature" subtitle="..." actions={...} />
+           <List items={items} loading={loading} />
+           <Modal isOpen={modalOpen} onClose={...} title="...">...</Modal>
+           <ConfirmDialog isOpen={!!itemToDelete} ... />
+           <ToastContainer toasts={toasts} onDismiss={removeToast} />
+         </div>
+       );
+     }
+
+================================================================================
+UI/UX CONSISTENCY RULES
+================================================================================
+
+1. BUTTONS
+--------------------------------------------------------------------------------
+   Primary   : red background (#ef4444), white text
+   Secondary : light gray background, dark text, border
+   Ghost     : transparent, red text (#ef4444), hover background
+   Danger    : red background (#dc2626), used for delete actions
+   Sizes     : sm | md | lg
+   Always show loading state during action
+
+2. CARDS
+--------------------------------------------------------------------------------
+   - White background
+   - Light border
+   - Subtle shadow
+   - Rounded corners (8px)
+   - Consistent padding (16px or 24px)
+
+3. MODALS
+--------------------------------------------------------------------------------
+   - Centered on screen
+   - Dark overlay background
+   - Slide-in or scale-in animation
+   - Close button top-right
+   - Max width for readability
+   - Trap focus inside modal
+   - Close on overlay click or ESC key
+
+4. FORMS
+--------------------------------------------------------------------------------
+   - Clear labels above inputs
+   - Required field indicator
+   - Field-level error messages below input
+   - Consistent input height and padding
+   - Focus state with red border (#ef4444)
+   - Disabled state with reduced opacity
+
+5. TABLES
+--------------------------------------------------------------------------------
+   - Striped rows or hover highlight
+   - Fixed header on scroll
+   - Sortable columns where appropriate
+   - Action buttons in last column
+   - Responsive: stack on mobile or horizontal scroll
+   - Empty state with helpful message
+
+6. TOASTS / NOTIFICATIONS
+--------------------------------------------------------------------------------
+   - Top-right corner placement
+   - Auto-dismiss after 3-5 seconds
+   - Color-coded:
+     * Success : Green (#16a34a)
+     * Error   : Red (#dc2626)
+     * Warning : Amber (#f59e0b)
+     * Info    : Blue (#3b82f6)
+   - Slide-in animation
+   - Show icon matching type
+   - Allow manual dismiss
+
+7. PAGINATION (NEW)
+--------------------------------------------------------------------------------
+   - Show "Showing X-Y of Z items" indicator
+   - Items per page selector (10, 25, 50, 100)
+   - Smart page number display with ellipsis
+   - Previous/Next buttons with icons
+   - Disable prev/next when at boundaries
+   - Reset to page 1 when filters change
+   - Red gradient active page button
+
+================================================================================
+SCHEDULE-SPECIFIC RULES
+================================================================================
+
+1. SCHEDULE GRID LAYOUT
+--------------------------------------------------------------------------------
+   - 30-minute time interval rows (7:00 AM to 5:30 PM)
+   - Columns: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday
+   - Each schedule block spans multiple rows based on duration
+   - Use subject color for block background
+   - Show subject code + teacher/section/room depending on view type
+  - Current implementation uses an HTML table with rowSpan-based blocks
+
+   Time slots:
+     07:00-07:30  07:30-08:00  08:00-08:30  08:30-09:00
+     09:00-09:30  09:30-10:00  10:00-10:30  10:30-11:00
+     11:00-11:30  11:30-12:00  12:00-12:30  12:30-13:00
+     13:00-13:30  13:30-14:00  14:00-14:30  14:30-15:00
+     15:00-15:30  15:30-16:00  16:00-16:30  16:30-17:00
+     17:00-17:30
+
+2. SCHEDULE BLOCK STYLING
+--------------------------------------------------------------------------------
+   - Background  : subject color
+   - Border      : 2px solid darker shade of subject color
+   - Border radius: 8px
+   - Padding     : 8px
+   - Text        : centered, truncate if needed
+   - Hover       : slight scale or shadow effect
+   - Click       : open edit modal or details
+
+3. SCHEDULE GENERATION
+--------------------------------------------------------------------------------
+   - Show progress indicator during generation
+   - Display summary after completion
+  - Show conflict count in summary and provide direct navigation to conflicts
+   - Allow manual adjustment after generation
+   - Save logs for audit trail
+  - Generation strategies:
+    * Auto Best (default) tries multiple strategies and keeps the best result
+    * Strategy results are included in the generation notes for comparison
+    * Manual strategy selection is available in Scheduling Setup
+
+   NSTP Rules during generation:
+     - Detect subjects with subject_type = 'nstp'
+     - Skip NSTP during engine placement (no schedule_entries row)
+     - NSTP is NOT assigned a time slot by the engine
+     - NSTP does NOT appear as a timetable block in the schedule grid
+     - All OTHER Year 1 subjects = Monday to Friday ONLY
+     - saturday_blocked = true is checked before assigning Saturday
+       to any regular subject for Year 1 sections
+     - NSTP can still appear in Course Code tables/reports via
+       extra-subject mapping for first-year section contexts
+
+   PE / PATHFit Rules during generation:
+     - Detect subjects with subject_type = 'pe'
+     - Venue assignment priority:
+       1. PE AREA (Open Area / PE) - PRIMARY
+       2. CONFERENCE HALL (Open Area / Shared Activity) - FALLBACK
+       3. If both occupied - mark as CONFLICT/UNASSIGNED
+     - Time is flexible (not fixed) - assigned during generation
+     - Duration: 2 hours per session, once per week (single_day)
+
+   BSHM Lecture-Lab Rules during generation (UPDATED):
+     - Detect subjects with subject_type = 'lecture_lab'
+     - For confirmed BSHM combined subjects, use combined_lec_lab:
+       * HPKITCHEN
+       * HEBREPAS
+       * HEBARBEV
+       * HEHOUSEKEEPING
+       * HEWEST
+     - For confirmed BSHM split subject, use split_lec_lab:
+       * HPRESEARCH
+     - Other BSHM lecture_lab subjects from curriculum guide need
+       confirmation from real schedules before finalizing pattern:
+       * HPLODGING
+       * HEFNB
+       * THEFRONTOP
+       * HEDESIGN
+       * HEASIAN
+       * HPRMICE
+       * HPBUSTECH
+       * HPERGONOMICS
+       * HECATMA
+
+4. CONFLICT DETECTION
+--------------------------------------------------------------------------------
+   - Check teacher conflicts  (same teacher, same time, same day)
+   - Check room conflicts     (same room, same time, same day)
+   - Check section conflicts  (same section, same time, same day)
+   - Check venue type mismatch
+   - Check Saturday restriction for Year 1 sections
+     (regular subjects cannot use Saturday if saturday_blocked = true)
+   - Same subject code alone  = NOT a conflict
+   - Display conflicts with clear descriptions
+
+================================================================================
+COMPONENT IMPORT REFERENCE (CRITICAL)
+================================================================================
+
+   supabase client (browser):
+     import { supabase } from '@/lib/supabaseClient';
+
+   supabase admin (API routes only):
+     import { supabaseAdmin } from '@/lib/supabaseAdmin';
+
+   Skeleton:
+     import Skeleton from '@/components/ui/Skeleton';
+     import Skeleton, {
+       SkeletonText, SkeletonCard, SkeletonTable, SkeletonList
+     } from '@/components/ui/Skeleton';
+
+   Toast (named exports ONLY - no default export):
+     import { Toast, ToastContainer } from '@/components/ui/Toast';
+
+   Modal:
+     import Modal, { ModalFooter } from '@/components/ui/Modal';
+
+   PageHeader:
+     import PageHeader from '@/components/shared/PageHeader';
+     PROP: "actions" (NOT "action")
+
+   ConfirmDialog:
+     import ConfirmDialog from '@/components/shared/ConfirmDialog';
+
+================================================================================
+COMPLETED FEATURES
+================================================================================
+
+   [x] Dashboard
+       - ActiveTermBanner, StatsCard (7 stats)
+       - QuickActions, IssuesSummary
+       - Realtime on 6 tables, Skeleton loading
+
+   [x] Academic Terms
+       - CRUD (Add, Edit, Delete)
+       - TermList, TermForm, TermStatusBadge
+       - Active term auto-deactivates others
+       - Delete checks references
+       - Realtime, ConfirmDialog, Toast
+
+   [x] Curriculum - Programs
+       - Fixed 4 programs (BSIT, BSBA, BEED, BSHM)
+       - Read-only display, no CRUD needed
+       - Used as reference in curriculum versions
+
+   [x] Curriculum - Curriculum Versions
+       - CRUD (Add, Edit, Delete)
+       - Linked to programs
+       - Force delete with typed confirmation ("DELETE")
+       - Cascade delete removes subjects, prerequisites, assignments
+       - Realtime, ConfirmDialog, Toast
+
+   [x] Curriculum - Subjects
+       - CRUD (Add, Edit, Delete with typed confirmation)
+       - Subject types: lecture_only, lecture_lab, pe, practicum,
+         ojt, internship, field_study, nstp
+       - Delivery patterns: split_lec_lab, combined_lec_lab,
+         flexible, single_day
+       - Color picker for schedule display
+       - Prerequisite selector
+       - Venue type/subtype matching
+       - Force delete with teacher assignment check
+       - Pagination (10, 25, 50, 100 per page)
+       - Filter by version, year level, semester
+       - Realtime updates
+       - PE / PATHFit auto-setup in SubjectForm:
+         * delivery_pattern = single_day
+         * lec_units = 0
+         * lab_units = 0
+         * credit_units = 2
+         * required_venue_type = Open Area
+         * required_venue_subtype = PE
+
+   [x] Sections
+       - CRUD (Add, Edit, Delete)
+       - Term-based, linked to program and curriculum version
+       - saturday_blocked auto-set for Year 1
+       - Filter by term, program, year level, status
+       - Realtime, ConfirmDialog, Toast
+
+   [x] Teachers - Teacher List
+       - CRUD (Add, Edit, Delete)
+       - Avatar upload to teacher-avatars bucket
+       - Employment type (full_time, part_time)
+       - max_teaching_days (1-6), max_load_units
+       - departments array for filtering
+       - Delete checks schedule_entries references
+       - Card-based layout with department banners
+       - Realtime updates
+
+   [x] Teachers - Availability
+       - Grid-based day availability for all teachers
+       - Empty day shows [+ Add] button
+       - "Fill X Days" bulk availability
+       - Quick presets: "Weekdays Only" / "Full Week"
+       - max_teaching_days validation
+       - Search + department filter
+       - Stats bar shows records, teachers set, full days, not yet set
+       - Realtime updates
+
+   [x] Teachers - Subject Assignments
+       - Multi-subject assignment per teacher
+       - Subject chips grouped by program (BSIT, BSBA, BEED, BSHM)
+       - Checkbox list for multi-select (not dropdown)
+       - Selection persists across filter changes
+       - Teachers can teach ANY program (not locked to departments)
+       - Term-based assignments
+       - Bulk insert, skips duplicates
+       - Realtime updates
+
+   [x] Rooms & Venues
+       - CRUD (Add, Edit, Delete)
+       - 21 pre-populated venues
+       - Venue types: Lecture, Lab, Open Area, Off Campus
+       - Venue subtypes per type
+       - Color-coded type badges (blue, purple, green, orange)
+       - Stats bar (7 stats)
+       - Filter by type + status, search by name
+       - Pagination (10, 25, 50 per page)
+       - Card-based grid layout (3 -> 2 -> 1 responsive)
+       - Delete checks schedule_entries references
+       - Realtime updates
+
+   [x] NSTP Subject Type Support
+       - nstp enum added to Supabase subject_type
+       - utils/constants.js: NSTP_CONFIG added (no fixed time)
+       - SubjectForm.jsx: NSTP type, auto delivery pattern,
+         manual credit units, info boxes
+       - SubjectTypeTag.jsx: NSTP tag styling (slate gray)
+       - SectionForm.jsx: saturday_blocked auto-set for Year 1
+
+   [x] PE / PATHFit Subject Type Support
+       - pe enum in subject_type
+       - Venue assignment: PE AREA (primary), CONFERENCE HALL (fallback)
+       - delivery_pattern = 'single_day'
+       - credit_units = 2, lec_units = 0, lab_units = 0
+       - 2 hours per session, once per week
+
+   [x] Profile Page
+       - Profile info card + Change Password card
+       - admin_profile table integration
+       - Avatar upload to admin-avatars bucket
+       - Profile update (full_name, email, avatar_url)
+       - Change password form with validation
+       - Password strength indicator
+       - Manual save required after avatar upload
+       - Fixed eye-toggle alignment in password fields
+
+       [x] Scheduling
+         - Setup page with scope, regeneration mode, and strategy
+         - Generate page with progress and result summary
+         - Manage page with filters, edit/delete, and bulk delete
+         - Conflicts page with filters and resolve action
+         - Realtime listeners in manage/conflicts pages
+
+================================================================================
+KNOWN GOTCHAS
+================================================================================
+
+   1.  PageHeader prop is "actions" not "action"
+   2.  Toast uses named exports only (no default export)
+   3.  Skeleton uses default export for base component
+   4.  params must be awaited in API routes (Next.js 15+)
+   5.  supabaseAdmin for API routes, supabase for client/realtime
+   6.  User must be authenticated for RLS queries to work
+   7.  academic_terms has partial unique index:
+       only one active term allowed at a time
+   8.  When setting a term to active, deactivate all others first
+   9.  Channel names must be unique per subscription
+   10. Always call fetchItems() after successful mutations as backup
+   11. NSTP subject_type = 'nstp' (added to enum in Supabase)
+   12. NSTP: lec_units = 0, lab_units = 0, credit_units = 3 (manual)
+   13. NSTP delivery_pattern = 'single_day' (auto-set, locked)
+   14. NSTP is skipped by the engine (not inserted into schedule_entries
+       timetable blocks); it can appear in Course Code lists/reports
+       via extra-subject mapping for first-year sections
+   15. saturday_blocked = true auto-set for all Year 1 sections
+   16. Regular Year 1 subjects must NOT use Saturday
+   17. PE subject_type = 'pe' (added to enum in Supabase)
+   18. PE: lec_units = 0, lab_units = 0, credit_units = 2 (manual)
+   19. PE delivery_pattern = 'single_day' (auto-set, locked)
+   20. PE venue: PE AREA primary, CONFERENCE HALL fallback
+   21. PE duration: 2 hours, once per week, time is flexible
+   22. Curriculum version delete requires typed confirmation "DELETE"
+   23. Force delete curriculum version cascades to subjects,
+       prerequisites, and teacher assignments
+   24. Subjects page has pagination (default 10 per page)
+   25. Teachers can teach ANY program, departments field is for
+       filtering/display only
+   26. Teacher availability validates max_teaching_days before adding
+   27. Multi-subject assignment selection persists across filter changes
+   28. CSS variables (var(--primary-500)) do NOT resolve properly,
+       always use hardcoded hex colors (#ef4444, #dc2626, etc.)
+   29. Avatar upload to storage does NOT auto-save to database;
+       user must still click "Save Changes" in Profile page
+   30. admin_profile row must exist for logged-in user, or profile
+       fetch will return 0 rows
+   31. BSHM 1st semester curriculum is now available from images,
+       but several lecture_lab delivery patterns still need
+       confirmation from real schedules
+   32. grade_components must enforce status values: draft or posted
+   33. Student grade pages must never show draft component grades
+   34. Teacher offline encoding means mobile realtime grade updates
+       appear only after sync to Supabase
+
+================================================================================
+SUBJECT INPUT GUIDELINES
+================================================================================
+
+1. NSTP SUBJECTS
+--------------------------------------------------------------------------------
+   Subject Code      : NSTP 1 (1st Sem) or NSTP 2 (2nd Sem)
+   Subject Type      : nstp
+   Delivery Pattern  : single_day (auto-set, locked)
+   Lec Units         : 0
+   Lab Units         : 0
+   Credit Units      : 3 (manual input)
+   Year Level        : 1
+   Semester          : 1st or 2nd
+  Venue Type        : N/A (not inserted as a timetable block)
+  Notes             : Engine skips NSTP (no schedule_entries timetable row); Year 1 regular classes remain Monday-Friday only; NSTP may appear in Course Code lists/reports as extra subject data for first-year contexts.
+
+2. PE / PATHFit SUBJECTS
+--------------------------------------------------------------------------------
+   Subject Code      : PATHFit 112, 122, 212, 222
+                       OR PE 1, PE 2, PE 3, PE 4
+   Subject Type      : pe
+   Delivery Pattern  : single_day (auto-set, locked)
+   Lec Units         : 0
+   Lab Units         : 0
+   Credit Units      : 2 (manual input)
+   Year Level        : depends on curriculum
+   Semester          : depends on curriculum
+   Venue Type        : Open Area
+   Venue Subtype     : PE
+   Duration          : 2 hours per session, once per week
+   Notes             : Primary venue = PE AREA, fallback = CONFERENCE HALL
+
+3. PRACTICUM / OJT / INTERNSHIP / FIELD STUDY SUBJECTS
+--------------------------------------------------------------------------------
+   Subject Code      : HPRAC, OJT, FS 413A, FS 413B, etc.
+   Subject Type      : practicum | ojt | internship | field_study
+   Delivery Pattern  : single_day
+   Lec Units         : 0
+   Lab Units         : 0
+   Credit Units      : varies (e.g., 9 for HPRAC)
+   Year Level        : usually 4
+   Semester          : usually 2nd
+   Venue Type        : Off Campus
+   Venue Subtype     : External
+   Notes             : Special handling, multiple visible blocks,
+                       not normal classroom scheduling
+
+4. LECTURE-ONLY SUBJECTS (3 UNITS)
+--------------------------------------------------------------------------------
+   Subject Code      : varies
+   Subject Type      : lecture_only
+   Delivery Pattern  : flexible (3h single day OR 1.5h x 2 days)
+   Lec Units         : 3
+   Lab Units         : 0
+   Credit Units      : 3
+   Venue Type        : Lecture
+   Venue Subtype     : General
+   Notes             : Flexible scheduling pattern
+
+5. LECTURE-LAB SUBJECTS (2 LEC + 1 LAB)
+--------------------------------------------------------------------------------
+   BSIT Pattern (Split):
+     Subject Type      : lecture_lab
+     Delivery Pattern  : split_lec_lab
+     Lec Units         : 2
+     Lab Units         : 1
+     Credit Units      : 3
+     Duration          : 2h lecture + 3h lab (separate days)
+  Venue Type (Lec)  : Lecture / General (lecture sessions must NOT use labs)
+  Venue Type (Lab)  : Lab / Computer Lab (CL 1 or CL 2)
+
+   BSHM Pattern (Combined - CONFIRMED):
+     Subject Type      : lecture_lab
+     Delivery Pattern  : combined_lec_lab
+     Lec Units         : 2
+     Lab Units         : 1
+     Credit Units      : 3
+     Duration          : 5h continuous block (single day)
+     Venue Type        : Lab / Kitchen or Lab / Function Hall
+     Examples          : HPKITCHEN, HEBREPAS, HEBARBEV,
+                         HEHOUSEKEEPING, HEWEST
+
+   BSHM Pattern (Split - CONFIRMED):
+     Subject Type      : lecture_lab
+     Delivery Pattern  : split_lec_lab
+     Lec Units         : 2
+     Lab Units         : 1
+     Credit Units      : 3
+     Duration          : lecture and lab are separate entries
+     Example           : HPRESEARCH
+
+   BSHM Pattern (Needs Confirmation from Real Schedule):
+     Subject Type      : lecture_lab
+     Lec Units         : 2
+     Lab Units         : 1
+     Credit Units      : 3
+     Possible Subjects : HPLODGING, HEFNB, THEFRONTOP, HEDESIGN,
+                         HEASIAN, HPRMICE, HPBUSTECH,
+                         HPERGONOMICS, HECATMA
+
+6. BSHM CURRICULUM COVERAGE (UPDATED)
+--------------------------------------------------------------------------------
+   BSHM curriculum images now cover:
+     - 1st Year 1st Semester
+     - 1st Year 2nd Semester
+     - 2nd Year 1st Semester
+     - 2nd Year 2nd Semester
+     - 3rd Year 1st Semester
+     - 3rd Year 2nd Semester
+     - 4th Year 1st Semester
+     - 4th Year 2nd Semester
+
+   This resolves the previous missing BSHM 1st semester data gap.
+
+================================================================================
+DEVELOPMENT WORKFLOW
+================================================================================
+
+1. BEFORE CODING
+--------------------------------------------------------------------------------
+   - Understand the feature requirement
+   - Check if similar component exists
+   - Plan responsive layout
+   - Identify data dependencies
+   - Check Supabase schema
+
+2. WHILE CODING
+--------------------------------------------------------------------------------
+   - Write component structure first
+   - Add Tailwind for layout/responsiveness
+   - Create CSS module for custom styles
+   - Implement loading state with skeleton
+   - Add realtime subscription if needed
+   - Test on mobile, tablet, desktop
+   - Add error handling
+   - Add accessibility attributes
+
+3. AFTER CODING
+--------------------------------------------------------------------------------
+   - Test all user interactions
+   - Test edge cases (empty data, errors, slow network)
+   - Verify animations are smooth
+   - Check color consistency (use hardcoded hex colors)
+   - Verify responsive behavior
+   - Test keyboard navigation
+   - Check console for errors or warnings
+
+================================================================================
+COMMON MISTAKES TO AVOID
+================================================================================
+
+   1.  Forgetting realtime subscriptions on data tables
+   2.  Not showing skeleton loading states
+   3.  Using CSS variables instead of hardcoded hex colors
+   4.  Not testing mobile responsiveness
+   5.  Mixing Tailwind and CSS module responsibilities
+   6.  Not cleaning up subscriptions on unmount
+   7.  Exposing raw error messages to users
+   8.  Not disabling buttons during submission
+   9.  Not handling empty states gracefully
+   10. Inconsistent animation usage across pages
+   11. Using supabaseAdmin in client components
+   12. Not awaiting params in Next.js 15+ API routes
+   13. Using "action" instead of "actions" in PageHeader
+   14. Importing Toast as default export
+   15. Forgetting Year 1 saturday_blocked rule for regular classes
+   16. Assuming NSTP should be generated as timetable blocks
+       (engine skips NSTP; show it via Course Code/report extras instead)
+   17. Auto-computing credit units for NSTP subjects
+       (must be manual input: 0 lec + 0 lab + 3 credits)
+   18. Forgetting PE venue fallback rule (PE AREA -> CONFERENCE HALL)
+   19. Not validating max_teaching_days before adding availability
+   20. Assuming teachers are locked to departments
+       (they can teach any program)
+   21. Not persisting multi-select state across filter changes
+   22. Assuming all BSHM lecture_lab subjects use the same pattern
+       (some are combined, some split, some still need confirmation)
+   23. Showing draft component grades to students
+       (students should see posted only)
+   24. Computing final_grade from unposted component values
+       (compute/publish from posted values only)
+   25. Assuming realtime means instant while teacher is offline
+       (updates arrive after teacher sync)
+
+================================================================================
+END OF SCHEDY DEVELOPMENT RULES & GUIDELINES
+================================================================================

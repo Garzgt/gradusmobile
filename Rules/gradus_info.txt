@@ -1,0 +1,270 @@
+GRADUS SYSTEM MASTER DESCRIPTION (PLAIN TEXT AI CONTEXT)
+SYSTEM NAME:
+GRADUS – Grade Management, Intelligent Scheduling, Academic Progress Tracking, and Automated Academic Recognition System
+
+INSTITUTION:
+Pampanga State University – Sto. Tomas Campus
+
+SYSTEM TYPE:
+Academic Management System (Web + Desktop + Mobile Integration)
+
+PRIMARY PURPOSE:
+GRADUS is designed to centralize and automate academic scheduling, enrollment, grade encoding, advising plan generation, and recognition qualification for Pampanga State University Sto. Tomas Campus.
+
+The system operates using rule-based logic and deterministic validation. It does NOT use machine learning.
+
+============================================================
+
+AUTHENTICATION AND REGISTRATION
+============================================================
+1.1 Authentication Method
+
+Google Sign-In only
+Restricted to email domain: @pampangastateu.edu.ph
+No external email allowed
+1.2 Student Number Extraction
+
+Student number is automatically derived from email prefix
+Example:
+Email: 2023309289@pampangastateu.edu.ph
+Student Number: 2023309289
+Student number is not manually entered
+1.3 Profile Completion
+After authentication, student must input:
+
+First Name
+Middle Name
+Last Name
+Program (BSIT, BSBA, BEED, BSHM)
+Contact Number
+Stored in students table with:
+
+student_number
+email
+name fields
+program
+current_year_level
+============================================================
+2. CURRICULUM STRUCTURE
+Each program has:
+
+Curriculum Versions
+Year Level
+Semester
+Subjects
+Units (Lecture, Lab, Credit)
+Prerequisites
+Subject Type (lecture_only, lecture_lab, pe, nstp, practicum, etc.)
+Subjects are stored with:
+
+subject_code
+normalized_subject_code
+year_level
+semester
+credit_units
+prerequisite relationships
+Subject codes are normalized (e.g., CC 113(A) → CC113A) for grade matching.
+
+============================================================
+3. WEBVIEW EVALUATION SCAN (ADVISING FEATURE ONLY)
+Purpose:
+To scan the PSU portal evaluation page via the mobile app WebView when a student opens
+the advising feature in their dashboard.
+
+The WebView scan happens inside the advising feature only. It is not used during registration
+or as a gate before entering the dashboard.
+
+PSU evaluation page color semantics (student reads these during scan):
+- Blue rows: credited/passed subjects — satisfies prerequisites.
+- Black rows: failed or dropped subjects — does not satisfy prerequisites.
+- Yellow rows: INC (Incomplete) — satisfies prerequisites.
+- White/default rows: not credited — does not satisfy prerequisites.
+
+How it works (inside the advising feature):
+1. Student opens the advising feature from the dashboard.
+2. App opens the PSU portal evaluation page inside a WebView.
+3. Student logs in and scans their evaluation results.
+4. System reads which subjects are failed, incomplete, or not yet taken.
+5. System suggests subjects based on the scan result.
+6. Student selects subjects and proceeds to generate the advising form.
+
+============================================================
+4. ADVISING FEATURE
+Purpose:
+To help students who know they are irregular plan their subject enrollment for the current term.
+The feature is available to all students in the dashboard but recommended for irregular students only.
+The system does not classify or label students — the student decides themselves if they need it.
+
+How it works:
+1. Student opens the advising feature from the dashboard.
+2. App opens the PSU portal evaluation page via WebView. Student scans their results.
+3. System suggests subjects in priority order:
+   - Priority A: back subjects (failed/retakes) — listed first.
+   - Priority B: current year-level subjects — only if prerequisites are satisfied.
+   - No advance subjects from future year levels are allowed.
+4. Student selects subjects from the suggested list.
+5. System checks the currently published schedule for time conflicts across all selected subjects.
+6. If no conflicts — student generates a printable advising form.
+7. Student prints the form and submits it as a hard copy to the program coordinator.
+8. Student also submits a Letter of Intent (LOI) via the Google Drive link provided by the institution.
+9. Program coordinator forwards the advising form together with the LOI to main campus for official enrollment processing.
+10. After main campus processes the enrollment, teacher imports the classlist via Excel.
+
+Note: GRADUS does not automate equivalency evaluation for students from other institutions.
+
+============================================================
+5. SCHEDULING ENGINE
+Type:
+Rule-based deterministic scheduling engine.
+
+Schedule time rules:
+
+7:00 AM – 5:30 PM
+30-minute intervals
+Monday–Saturday
+Constraints:
+
+No teacher overlap
+No room overlap
+No section overlap
+Venue type must match subject type
+Year 1 Saturday blocked
+NSTP not included in schedule grid
+PE venue priority (PE Area → Conference Hall fallback)
+Venue program restrictions enforced
+Schedules generated as:
+
+Draft
+Reviewed
+Published
+Only PUBLISHED schedules can be used for enrollment.
+
+============================================================
+6. ENROLLMENT FLOW
+GRADUS has no role in enrollment. The LOI system and main campus handle the entire process.
+GRADUS involvement begins only after the teacher imports the classlist.
+
+All students:
+1. Submit their Letter of Intent (LOI) through a Google Drive link provided by the institution outside GRADUS.
+2. Main campus processes the LOI and creates the official classlist.
+3. Teacher downloads the official classlist from the PSU portal.
+4. Teacher imports the classlist via subject-level Excel file into the GRADUS Desktop app. Each file covers one section and one subject.
+5. After import, teacher begins encoding grades in GRADUS.
+
+Students who use the advising feature also:
+- Submit the printed advising form as a hard copy to the program coordinator before submitting the LOI.
+- The coordinator forwards the advising form together with the LOI to main campus for official enrollment processing.
+
+Note: The program coordinator is a real-world intermediary in the physical submission process and has no GRADUS system account.
+
+============================================================
+8. GRADE ENCODING AND STUDENT GRADE VISIBILITY
+Teachers use:
+
+Desktop application (Electron)
+Offline encoding supported
+Sync to Supabase when online
+Teacher encodes component grades:
+
+Attendance
+Quizzes
+Midterm Exam
+Final Exam
+Component workflow:
+
+draft = teacher editable, not visible to students
+posted = visible to students (mobile + web)
+If teacher is offline, updates appear to students only after sync.
+Students see posted grade updates in realtime after sync.
+Grade components stored in:
+grade_components table:
+
+student_id
+subject_id
+term_id
+attendance_score
+quiz_score
+midterm_exam_score
+final_exam_score
+component_total
+status (draft|posted)
+posted_at
+posted_by
+Grades stored in:
+grades table:
+
+student_id
+subject_id
+term_id
+final_grade
+equivalent_grade
+============================================================
+9. GWA COMPUTATION
+Formula:
+GWA = Σ(Grade × Units) / Σ(Units)
+
+Only enrolled subjects included.
+Computed after posted final grade submission.
+
+============================================================
+10. ACADEMIC RECOGNITION AUTOMATION
+Eligibility Conditions (all four must be met):
+
+1. No back subjects — all enrolled subjects must belong to the student’s current year level
+   and current semester only. Any subject from a previous year level or semester disqualifies
+   the student immediately.
+2. Full standard curriculum load — enrolled units must match the exact curriculum load defined
+   for the student’s current year level and semester.
+3. All subjects passed — no FAILED, DROPPED, or INC remarks in any enrolled subject for the term.
+4. GWA threshold:
+   President’s List: 1.00 – 1.25
+   Dean’s List: 1.26 – 1.75
+   GWA = Σ(equivalent_grade × credit_units) / Σ(credit_units)
+
+If all conditions are met:
+
+Record inserted in academic_honors table
+Digital certificate generated
+Email notification sent
+Published in recognition page
+No manual application required.
+
+If any condition fails — student is not qualified for that term.
+
+============================================================
+11. DATA INTEGRITY RULES
+Only PSU email accounts allowed.
+Student number auto-extracted from email.
+Grade import validated against curriculum.
+Enrollment allowed only if schedule published.
+Honors cannot be manually self-applied.
+Students can view only posted grades.
+Draft component grades are teacher/super-admin-only.
+Grade component changes must be audit logged.
+Super Admin has system-wide authority over scheduling, grading oversight, and account governance.
+============================================================
+12. USER ROLES
+Super Admin (1):
+
+Global scheduling generation/review/publication
+Cross-program system configuration and data management
+Manage teacher accounts and access governance
+Monitor grade posting compliance across programs
+Manage system-wide analytics and integration settings
+Teacher:
+
+Encode grades
+Encode attendance/quiz/midterm/final exam components
+Post grades for student visibility
+View class lists
+Manage grade submissions
+Handle assigned classes from any program as scheduled
+Student:
+
+Register via Google
+Access advising feature in dashboard
+View published schedule
+View posted grade components in realtime on mobile/web
+View grades
+View honor status
+END OF GRADUS MASTER SYSTEM DESCRIPTION

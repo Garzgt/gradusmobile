@@ -1,0 +1,374 @@
+
+================================================================================
+SCHEDULE TIME RULES
+================================================================================
+
+Start Time   : 7:00 AM (07:00)
+End Time     : 5:30 PM (17:30)
+Intervals    : 30 minutes
+Lunch Break  : NONE (classes run straight through)
+Days         : Monday, Tuesday, Wednesday, Thursday, Friday, Saturday
+
+Time Slots (30-min intervals):
+  07:00 07:30 08:00 08:30 09:00 09:30 10:00 10:30
+  11:00 11:30 12:00 12:30 13:00 13:30 14:00 14:30
+  15:00 15:30 16:00 16:30 17:00 17:30 (last slot end)
+
+================================================================================
+SCHEDULE VIEWS (3 VIEWS, 1 TABLE)
+================================================================================
+
+Time-grid schedule blocks are powered by ONE schedule_entries table.
+Course Code lists can also include extra subjects (for example,
+NSTP for first-year contexts) loaded from subject mappings.
+
+VIEW 1 - Section Schedule:
+  Block shows: Subject Code + Session Type + Teacher + Room
+  Filter by: Section
+
+VIEW 2 - Teacher Schedule:
+  Block shows: Subject Code + Section + Session Type + Room
+  Filter by: Teacher
+
+VIEW 3 - Room/Venue Schedule:
+  Block shows: Subject Code + Section + Teacher + Session Type
+  Filter by: Venue
+
+Grid Layout:
+  Rows    : 30-minute time intervals (7:00 AM to 5:30 PM)
+  Columns : Monday, Tuesday, Wednesday, Thursday, Friday, Saturday
+
+================================================================================
+SUBJECT HOURS REFERENCE (FINAL)
+================================================================================
+
+TYPE                  UNITS        HOURS/SESSION  DAYS/WEEK  BLOCKS
+──────────────────────────────────────────────────────────────────────
+lecture_only          3 lec        3h OR 1.5h     1 or 2     1 or 2
+  (flexible)
+pe / PATHFit          2 credit     2h             1          1
+lecture_lab BSIT      2 lec+1 lab  2h lec         2          2
+  (split_lec_lab)                  3h lab
+lecture_lab BSHM      2 lec+1 lab  5h combined    1          1
+  (combined_lec_lab)
+lecture_lab BSHM      2 lec+1 lab  2h lec         2          2
+  (split_lec_lab)                  3h lab
+ojt                   6 credit     6h             1          1
+nstp                  3 credit     NOT IN SCHEDULE TABLE
+──────────────────────────────────────────────────────────────────────
+
+UNIT RULES:
+  - 2-unit subjects = PE / PATHFit ONLY
+  - No 1-unit subjects exist
+  - NSTP: 0 lec + 0 lab + 3 credits (NOT in schedule)
+  - PE:   0 lec + 0 lab + 2 credits (IN schedule)
+
+================================================================================
+FLEXIBLE PATTERN RULE
+================================================================================
+
+lecture_only with delivery_pattern = flexible:
+  Option A: 3 hours in 1 day (single block)
+  Option B: 1.5 hours x 2 days (split into 2 blocks)
+
+Engine behavior:
+  1. Try Option A first (3h continuous slot)
+  2. If no 3h slot available, fall back to Option B (1.5h x 2 days)
+  3. Admin sets flexible during subject creation
+  4. Engine decides which option to use based on availability
+
+================================================================================
+NSTP RULES (FINAL)
+================================================================================
+
+  - NSTP is NOT placed in the schedule table
+  - NSTP is NOT assigned a time slot by the engine
+  - NSTP does NOT appear as a timetable block in schedule grids
+  - NSTP can appear in Course Code tables/reports via extra-subject
+    mapping for first-year section contexts
+  - Saturday is BLOCKED for ALL Year 1 sections
+    across ALL departments (BSIT, BSBA, BEED, BSHM)
+  - Saturday = NSTP day for all Year 1
+  - No regular class can be placed on Saturday for Year 1
+  - saturday_blocked = true is auto-set for all Year 1 sections
+  - NSTP subject_type = 'nstp' exists in DB but engine skips it
+
+================================================================================
+PE / PATHFit RULES (FINAL)
+================================================================================
+
+  - Subject type  : pe
+  - Credit units  : 2 (0 lec + 0 lab)
+  - Hours         : 2 hours per session
+  - Days per week : 1 (single_day)
+  - Blocks        : 1 block on schedule
+  - Primary venue : PE AREA (Open Area / PE)
+  - Fallback venue: CONFERENCE HALL (Open Area / Shared Activity)
+  - If both taken : mark as CONFLICT / UNASSIGNED
+  - Time          : flexible (engine assigns during generation)
+
+================================================================================
+OJT / PRACTICUM / INTERNSHIP / FIELD STUDY RULES (FINAL)
+================================================================================
+
+Subject mapping:
+  OJT (BSIT)      → ojt         + Off Campus / External
+  HPRAC (BSHM)    → practicum   + Off Campus / External
+  EDUC 426 (BEED) → internship  + Off Campus / External
+  FS 413A (BEED)  → field_study + Off Campus / External
+  FS 413B (BEED)  → field_study + Off Campus / External
+
+Hours by credit units:
+  9 units (HPRAC only):
+    - 3 hours per session
+    - 3 meetings per week (3 different days)
+    - Total: 9 hours per week
+    - 3 blocks on schedule
+
+  6 units (practicum - CURRENT ENGINE):
+    - 6 hours in one continuous session
+    - 1 meeting per week (single day)
+    - Total: 6 hours per week
+    - 1 block on schedule
+
+  6 units (internship, field_study):
+    - 3 hours per session
+    - 2 meetings per week (2 different days)
+    - Total: 6 hours per week
+    - 2 blocks on schedule
+
+  6 units (OJT - CURRENT ENGINE):
+    - 6 hours in one continuous session
+    - 1 meeting per week (single day)
+    - Total: 6 hours per week
+    - 1 block on schedule
+
+Venue: OFF CAMPUS (Off Campus / External) for all types
+Delivery pattern: single_day per block
+
+================================================================================
+SATURDAY RULES (FINAL)
+================================================================================
+
+Year 1 (ALL departments - BSIT, BSBA, BEED, BSHM):
+  - Saturday = BLOCKED (saturday_blocked = true)
+  - No regular classes on Saturday
+  - NSTP day (not shown in schedule)
+  - Engine must NOT assign any subject to Saturday
+    for any Year 1 section
+
+Year 2, 3, 4 (ALL departments):
+  - Saturday = allowed for regular classes
+  - No NSTP blocking
+  - Engine can assign subjects to Saturday normally
+
+================================================================================
+VENUE RULES (FINAL)
+================================================================================
+
+VENUE PROGRAM RESTRICTIONS:
+  VENUE           │ ALLOWED PROGRAMS    │ BLOCKED PROGRAMS
+  ─────────────────────────────────────────────────────────
+  RM 1-8          │ ALL                 │ none
+  RM 103-105      │ ALL                 │ none
+  SCI LAB         │ ALL                 │ none
+  LIBRARY         │ BSIT ONLY           │ BSBA, BEED, BSHM
+  OLD CANTEEN     │ BSBA, BEED, BSHM    │ BSIT
+  CL 1            │ BSIT ONLY           │ BSBA, BEED, BSHM
+  CL 2            │ BSIT ONLY           │ BSBA, BEED, BSHM
+  KITCHEN         │ BSHM ONLY           │ BSIT, BSBA, BEED
+  FUNCTION HALL   │ BSHM ONLY           │ BSIT, BSBA, BEED
+  PE AREA         │ ALL                 │ none
+  CONFERENCE HALL │ ALL                 │ none
+  OFF CAMPUS      │ ALL                 │ none
+
+VENUE TYPE MATCHING:
+  lecture_only subjects → Lecture / General rooms
+  BSIT lab subjects     → Lab / Computer Lab (CL 1 or CL 2)
+  BSHM lab subjects     → Lab / Kitchen OR Lab / Function Hall
+  PE subjects           → Open Area / PE (primary)
+                          Open Area / Shared Activity (fallback)
+  OJT/Practicum etc.    → Off Campus / External
+
+IMPORTANT VENUE NOTES:
+  - SCI LAB = Lecture type (NOT Lab type)
+  - OLD CANTEEN = active lecture venue (blocked for BSIT)
+  - Lab rooms are NOT interchangeable across programs
+  - Lecture rooms are shared across all allowed programs
+  - Engine uses venue_type + venue_subtype for matching
+
+================================================================================
+CONFLICT DETECTION RULES
+================================================================================
+
+CONFLICT = any of these:
+  1. Same teacher + same day + overlapping time
+  2. Same venue + same day + overlapping time
+     (except OFF CAMPUS virtual venue)
+  3. Same section + same day + overlapping time
+  4. Venue type mismatch (wrong room for subject type)
+  5. Saturday assigned to Year 1 section (regular subject)
+  6. Venue program restriction violated
+     (e.g., BSIT assigned to OLD CANTEEN)
+
+NOT A CONFLICT:
+  - Same subject code in different sections
+  - Same subject code with different teachers
+  - Same teacher in different time slots
+  - Multiple OFF CAMPUS entries at the same day/time
+
+================================================================================
+SCHEDULE GENERATION ENGINE RULES
+================================================================================
+
+ENGINE FILE ORDER (build in this order):
+  1. timeSlotUtils.js    - time slot generation and overlap detection
+  2. conflictChecker.js  - conflict detection logic
+  3. restrictions.js     - NSTP, Saturday, venue program rules
+  4. venueMapper.js      - venue type/subtype matching + fallback
+  5. loadBalancer.js     - teacher load distribution
+  6. patternResolver.js  - split/combined/flexible pattern logic
+  7. engine.js           - main orchestrator
+
+GENERATION SCOPE OPTIONS:
+  single_section    → one section only
+  multiple_sections → admin-selected sections
+  year_level        → all sections in one year level
+  program           → all sections in one program (DEFAULT)
+  whole_term        → all sections across all programs
+
+REGENERATION MODES:
+  generate_unscheduled → only fill unscheduled subjects
+  replace_section      → replace schedules for selected scope sections
+  full_regeneration    → wipe and regenerate everything
+
+CONFLICT CHECK SCOPE:
+  - Always campus-wide within active academic term
+  - If BSIT already scheduled, BSBA/BEED/BSHM generation
+    must check occupied teachers, rooms, and time slots
+
+ENGINE BEHAVIOR:
+  1. Fetch all sections in scope
+  2. For each section, fetch subjects from curriculum
+  3. Skip NSTP subjects (not scheduled)
+  4. For each subject, resolve pattern (split/combined/flexible)
+  5. Find available teacher (assigned + qualified + free)
+  6. Find available venue (type match + program allowed + free)
+  7. Find available time slot (no conflicts)
+  8. Create schedule_entry record
+  9. Log conflicts if any
+  10. Save generation log
+
+TEACHER SELECTION RULES:
+  - Teacher must be assigned to subject in current term
+  - Teacher must be available on that day (teacher_availability)
+  - Teacher must not be double-booked (no time conflict)
+  - Teacher must not exceed max_teaching_days
+  - Teacher must not exceed max_load_units
+  - Load balancing: prefer teacher with lighter load first
+  - Teachers can teach ANY program (not locked to departments)
+
+================================================================================
+PATTERN RESOLVER RULES
+================================================================================
+
+split_lec_lab (BSIT):
+  - Create 2 separate entries:
+    Entry 1: lecture, 2 hours, Lecture/General room
+    Entry 2: lab, 3 hours, Lab/Computer Lab room
+  - Must be on different days
+  - Same teacher preferred; engine can fallback to co-teach placement
+    when strict same-teacher split placement fails
+  - Same section for both
+
+combined_lec_lab (BSHM confirmed):
+  - Create 1 entry: combined, 5 hours continuous
+  - Single day
+  - Lab venue (Kitchen or Function Hall)
+  - Current venue fallback: non-Kitchen combined subjects may use
+    Lecture/General room when Function Hall/default combined venue
+    is unavailable
+  - Subjects: HPKITCHEN, HEBREPAS, HEBARBEV,
+              HEHOUSEKEEPING, HEWEST
+
+split_lec_lab (BSHM confirmed):
+  - Same as BSIT split pattern
+  - Subject: HPRESEARCH only
+
+flexible (lecture_only 3 units):
+  - Try Option A: 3h continuous block (1 day)
+  - Fallback Option B: 1.5h x 2 different days
+  - Engine decides based on slot availability
+
+single_day (PE):
+  - 1 entry: 2 hours, once per week
+  - PE AREA primary, CONFERENCE HALL fallback
+
+single_day (OJT - 6 units):
+  - CURRENT ENGINE: 1 entry, 6 hours continuous, 1 day
+  - OFF CAMPUS venue
+
+single_day (HPRAC - 9 units):
+  - 3 entries: 3 hours each, 3 different days
+  - OFF CAMPUS venue
+
+================================================================================
+BSHM LECTURE_LAB PATTERNS
+================================================================================
+
+CONFIRMED COMBINED (combined_lec_lab):
+  HPKITCHEN, HEBREPAS, HEBARBEV, HEHOUSEKEEPING, HEWEST
+
+CONFIRMED SPLIT (split_lec_lab):
+  HPRESEARCH
+
+NEEDS CONFIRMATION (DO NOT hardcode fallback):
+  HPLODGING, HEFNB, THEFRONTOP, HEDESIGN,
+  HEASIAN, HPRMICE, HPBUSTECH, HPERGONOMICS, HECATMA
+
+Current behavior note:
+  - Engine follows the subject's stored delivery_pattern value.
+  - Unconfirmed subjects should be explicitly set in subject data.
+
+================================================================================
+TECH STACK REMINDERS
+================================================================================
+
+  - Next.js 16.2.1 (App Router)
+  - Supabase PostgreSQL
+  - API routes use supabaseAdmin ONLY
+  - Client components use supabase client ONLY
+  - params must be AWAITED in Next.js 15+ API routes
+  - Colors: hardcoded hex (#ef4444, #dc2626, #b91c1c)
+  - NO CSS variables (var(--primary-500) does NOT resolve)
+  - Toast: named exports only
+  - PageHeader prop: "actions" NOT "action"
+
+================================================================================
+FILES IN USE (SCHEDULING ENGINE)
+================================================================================
+
+lib/scheduling/
+  timeSlotUtils.js     ← START HERE
+  conflictChecker.js
+  restrictions.js
+  venueMapper.js
+  loadBalancer.js
+  patternResolver.js
+  engine.js
+
+app/api/scheduling/
+  generate/route.js
+  entries/route.js
+  entries/[id]/route.js
+  conflicts/route.js
+
+app/(admin)/scheduling/
+  setup/page.jsx + components
+  generate/page.jsx + components
+  manage/page.jsx + components
+  conflicts/page.jsx + components
+
+================================================================================
+END OF SCHEDY SCHEDULING ENGINE NOTES
+================================================================================

@@ -1,0 +1,458 @@
+📦app
+ ┣ 📂(admin)
+ ┃ ┣ 📂academic-terms
+ ┃ ┃ ┣ 📂components
+ ┃ ┃ ┃ ┣ 📜DeleteTermDialog.jsx
+ ┃ ┃ ┃ ┣ 📜DeleteTermDialog.module.css
+ ┃ ┃ ┃ ┣ 📜TermForm.jsx
+ ┃ ┃ ┃ ┣ 📜TermForm.module.css
+ ┃ ┃ ┃ ┣ 📜TermList.jsx
+ ┃ ┃ ┃ ┣ 📜TermList.module.css
+ ┃ ┃ ┃ ┣ 📜TermStatusBadge.jsx
+ ┃ ┃ ┃ ┗ 📜TermStatusBadge.module.css
+ ┃ ┃ ┣ 📂services
+ ┃ ┃ ┃ ┗ 📜termService.js
+ ┃ ┃ ┣ 📜page.jsx
+ ┃ ┃ ┗ 📜page.module.css
+ ┃ ┣ 📂curriculum
+ ┃ ┃ ┣ 📂programs
+ ┃ ┃ ┃ ┣ 📂components
+ ┃ ┃ ┃ ┃ ┣ 📜ProgramList.jsx
+ ┃ ┃ ┃ ┃ ┗ 📜ProgramList.module.css
+ ┃ ┃ ┃ ┣ 📂services
+ ┃ ┃ ┃ ┃ ┗ 📜programService.js
+ ┃ ┃ ┃ ┣ 📜page.jsx
+ ┃ ┃ ┃ ┗ 📜page.module.css
+ ┃ ┃ ┣ 📂subjects
+ ┃ ┃ ┃ ┣ 📂components
+ ┃ ┃ ┃ ┃ ┣ 📜DeleteSubjectDialog.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜DeleteSubjectDialog.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜PrerequisiteSelector.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜PrerequisiteSelector.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜SubjectColorPicker.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜SubjectColorPicker.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜SubjectForm.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜SubjectForm.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜SubjectList.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜SubjectList.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜SubjectTypeTag.jsx
+ ┃ ┃ ┃ ┃ ┗ 📜SubjectTypeTag.module.css
+ ┃ ┃ ┃ ┣ 📂services
+ ┃ ┃ ┃ ┃ ┗ 📜subjectService.js
+ ┃ ┃ ┃ ┣ 📜page.jsx
+ ┃ ┃ ┃ ┗ 📜page.module.css
+ ┃ ┃ ┣ 📂versions
+ ┃ ┃ ┃ ┣ 📂components
+ ┃ ┃ ┃ ┃ ┣ 📜DeleteVersionDialog.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜DeleteVersionDialog.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜VersionForm.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜VersionForm.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜VersionList.jsx
+ ┃ ┃ ┃ ┃ ┗ 📜VersionList.module.css
+ ┃ ┃ ┃ ┣ 📂services
+ ┃ ┃ ┃ ┃ ┗ 📜versionService.js
+ ┃ ┃ ┃ ┣ 📜page.jsx
+ ┃ ┃ ┃ ┗ 📜page.module.css
+ ┃ ┃ ┣ 📜page.jsx
+ ┃ ┃ ┗ 📜page.module.css
+ ┃ ┣ 📂dashboard
+ ┃ ┃ ┣ 📂components
+ ┃ ┃ ┃ ┣ 📜ActiveTermBanner.jsx
+ ┃ ┃ ┃ ┣ 📜ActiveTermBanner.module.css
+ ┃ ┃ ┃ ┣ 📜IssuesSummary.jsx
+ ┃ ┃ ┃ ┣ 📜IssuesSummary.module.css
+ ┃ ┃ ┃ ┣ 📜QuickActions.jsx
+ ┃ ┃ ┃ ┣ 📜QuickActions.module.css
+ ┃ ┃ ┃ ┣ 📜StatsCard.jsx
+ ┃ ┃ ┃ ┗ 📜StatsCard.module.css
+ ┃ ┃ ┣ 📂services
+ ┃ ┃ ┃ ┗ 📜dashboardService.js
+ ┃ ┃ ┣ 📜page.jsx
+ ┃ ┃ ┗ 📜page.module.css
+ ┃ ┣ 📂profile
+ ┃ ┃ ┣ 📂components
+ ┃ ┃ ┃ ┣ 📜ChangePasswordForm.jsx
+ ┃ ┃ ┃ ┣ 📜ChangePasswordForm.module.css
+ ┃ ┃ ┃ ┣ 📜ProfileForm.jsx
+ ┃ ┃ ┃ ┗ 📜ProfileForm.module.css
+ ┃ ┃ ┣ 📂services
+ ┃ ┃ ┃ ┗ 📜profileService.js
+ ┃ ┃ ┣ 📜page.jsx
+ ┃ ┃ ┗ 📜page.module.css
+ ┃ ┣ 📂reports
+ ┃ ┃ ┣ 📂print-export
+ ┃ ┃ ┃ ┣ 📂components
+ ┃ ┃ ┃ ┃ ┣ 📜ExportOptions.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜ExportOptions.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜PrintableScheduleTemplate.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜PrintableScheduleTemplate.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜PrintPreview.jsx
+ ┃ ┃ ┃ ┃ ┗ 📜PrintPreview.module.css
+ ┃ ┃ ┃ ┣ 📂services
+ ┃ ┃ ┃ ┃ ┗ 📜exportService.js
+ ┃ ┃ ┃ ┣ 📜page.jsx
+ ┃ ┃ ┃ ┗ 📜page.module.css
+ ┃ ┃ ┣ 📂room-venue-schedules
+ ┃ ┃ ┃ ┣ 📂components
+ ┃ ┃ ┃ ┃ ┣ 📜VenueScheduleBlock.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜VenueScheduleBlock.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜VenueScheduleFilter.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜VenueScheduleFilter.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜VenueScheduleGrid.jsx
+ ┃ ┃ ┃ ┃ ┗ 📜VenueScheduleGrid.module.css
+ ┃ ┃ ┃ ┣ 📂services
+ ┃ ┃ ┃ ┃ ┗ 📜venueScheduleService.js
+ ┃ ┃ ┃ ┣ 📜page.jsx
+ ┃ ┃ ┃ ┗ 📜page.module.css
+ ┃ ┃ ┣ 📂section-schedules
+ ┃ ┃ ┃ ┣ 📂components
+ ┃ ┃ ┃ ┃ ┣ 📜SectionScheduleBlock.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜SectionScheduleBlock.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜SectionScheduleFilter.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜SectionScheduleFilter.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜SectionScheduleGrid.jsx
+ ┃ ┃ ┃ ┃ ┗ 📜SectionScheduleGrid.module.css
+ ┃ ┃ ┃ ┣ 📂services
+ ┃ ┃ ┃ ┃ ┗ 📜sectionScheduleService.js
+ ┃ ┃ ┃ ┣ 📜page.jsx
+ ┃ ┃ ┃ ┗ 📜page.module.css
+ ┃ ┃ ┣ 📂teacher-schedules
+ ┃ ┃ ┃ ┣ 📂components
+ ┃ ┃ ┃ ┃ ┣ 📜TeacherScheduleBlock.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜TeacherScheduleBlock.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜TeacherScheduleFilter.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜TeacherScheduleFilter.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜TeacherScheduleGrid.jsx
+ ┃ ┃ ┃ ┃ ┗ 📜TeacherScheduleGrid.module.css
+ ┃ ┃ ┃ ┣ 📂services
+ ┃ ┃ ┃ ┃ ┗ 📜teacherScheduleService.js
+ ┃ ┃ ┃ ┣ 📜page.jsx
+ ┃ ┃ ┃ ┗ 📜page.module.css
+ ┃ ┃ ┣ 📜page.jsx
+ ┃ ┃ ┗ 📜page.module.css
+ ┃ ┣ 📂rooms-venues
+ ┃ ┃ ┣ 📂components
+ ┃ ┃ ┃ ┣ 📜VenueCard.jsx
+ ┃ ┃ ┃ ┣ 📜VenueCard.module.css
+ ┃ ┃ ┃ ┣ 📜VenueForm.jsx
+ ┃ ┃ ┃ ┣ 📜VenueForm.module.css
+ ┃ ┃ ┃ ┣ 📜VenueList.jsx
+ ┃ ┃ ┃ ┣ 📜VenueList.module.css
+ ┃ ┃ ┃ ┣ 📜VenueTypeTag.jsx
+ ┃ ┃ ┃ ┗ 📜VenueTypeTag.module.css
+ ┃ ┃ ┣ 📂services
+ ┃ ┃ ┃ ┗ 📜venueService.js
+ ┃ ┃ ┣ 📜page.jsx
+ ┃ ┃ ┗ 📜page.module.css
+ ┃ ┣ 📂scheduling
+ ┃ ┃ ┣ 📂conflicts
+ ┃ ┃ ┃ ┣ 📂components
+ ┃ ┃ ┃ ┃ ┣ 📜ConflictCard.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜ConflictCard.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜ConflictList.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜ConflictList.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜ConflictTypeTag.jsx
+ ┃ ┃ ┃ ┃ ┗ 📜ConflictTypeTag.module.css
+ ┃ ┃ ┃ ┣ 📂services
+ ┃ ┃ ┃ ┃ ┗ 📜conflictService.js
+ ┃ ┃ ┃ ┣ 📜page.jsx
+ ┃ ┃ ┃ ┗ 📜page.module.css
+ ┃ ┃ ┣ 📂generate
+ ┃ ┃ ┃ ┣ 📂components
+ ┃ ┃ ┃ ┃ ┣ 📜GeneratePanel.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜GeneratePanel.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜GenerationProgress.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜GenerationProgress.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜GenerationSummary.jsx
+ ┃ ┃ ┃ ┃ ┗ 📜GenerationSummary.module.css
+ ┃ ┃ ┃ ┣ 📂services
+ ┃ ┃ ┃ ┃ ┗ 📜generateService.js
+ ┃ ┃ ┃ ┣ 📜page.jsx
+ ┃ ┃ ┃ ┗ 📜page.module.css
+ ┃ ┃ ┣ 📂manage
+ ┃ ┃ ┃ ┣ 📂components
+ ┃ ┃ ┃ ┃ ┣ 📜ManualSubjectPool.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜ManualSubjectPool.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜ScheduleBlock.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜ScheduleBlock.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜ScheduleBulkDeleteModal.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜ScheduleBulkDeleteModal.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜ScheduleEditModal.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜ScheduleEditModal.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜ScheduleFilterBar.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜ScheduleFilterBar.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜ScheduleTable.jsx
+ ┃ ┃ ┃ ┃ ┗ 📜ScheduleTable.module.css
+ ┃ ┃ ┃ ┣ 📂services
+ ┃ ┃ ┃ ┃ ┗ 📜manageService.js
+ ┃ ┃ ┃ ┣ 📜page.jsx
+ ┃ ┃ ┃ ┗ 📜page.module.css
+ ┃ ┃ ┣ 📂setup
+ ┃ ┃ ┃ ┣ 📂components
+ ┃ ┃ ┃ ┃ ┣ 📜RegenerationModeSelector.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜RegenerationModeSelector.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜ScopeSelector.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜ScopeSelector.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜SetupForm.jsx
+ ┃ ┃ ┃ ┃ ┗ 📜SetupForm.module.css
+ ┃ ┃ ┃ ┣ 📂services
+ ┃ ┃ ┃ ┃ ┗ 📜setupService.js
+ ┃ ┃ ┃ ┣ 📜page.jsx
+ ┃ ┃ ┃ ┗ 📜page.module.css
+ ┃ ┃ ┣ 📜page.jsx
+ ┃ ┃ ┗ 📜page.module.css
+ ┃ ┣ 📂sections
+ ┃ ┃ ┣ 📂components
+ ┃ ┃ ┃ ┣ 📜SectionFilterBar.jsx
+ ┃ ┃ ┃ ┣ 📜SectionFilterBar.module.css
+ ┃ ┃ ┃ ┣ 📜SectionForm.jsx
+ ┃ ┃ ┃ ┣ 📜SectionForm.module.css
+ ┃ ┃ ┃ ┣ 📜SectionList.jsx
+ ┃ ┃ ┃ ┗ 📜SectionList.module.css
+ ┃ ┃ ┣ 📂services
+ ┃ ┃ ┃ ┗ 📜sectionService.js
+ ┃ ┃ ┣ 📜page.jsx
+ ┃ ┃ ┗ 📜page.module.css
+ ┃ ┣ 📂teachers
+ ┃ ┃ ┣ 📂availability
+ ┃ ┃ ┃ ┣ 📂components
+ ┃ ┃ ┃ ┃ ┣ 📜AvailabilityForm.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜AvailabilityForm.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜AvailabilityGrid.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜AvailabilityGrid.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜BulkAvailabilityForm.jsx
+ ┃ ┃ ┃ ┃ ┗ 📜BulkAvailabilityForm.module.css
+ ┃ ┃ ┃ ┣ 📂services
+ ┃ ┃ ┃ ┃ ┗ 📜availabilityService.js
+ ┃ ┃ ┃ ┣ 📜page.jsx
+ ┃ ┃ ┃ ┗ 📜page.module.css
+ ┃ ┃ ┣ 📂list
+ ┃ ┃ ┃ ┣ 📂components
+ ┃ ┃ ┃ ┃ ┣ 📜DeleteTeacherDialog.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜DeleteTeacherDialog.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜TeacherCard.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜TeacherCard.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜TeacherForm.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜TeacherForm.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜TeacherList.jsx
+ ┃ ┃ ┃ ┃ ┗ 📜TeacherList.module.css
+ ┃ ┃ ┃ ┣ 📂services
+ ┃ ┃ ┃ ┃ ┗ 📜teacherService.js
+ ┃ ┃ ┃ ┣ 📜page.jsx
+ ┃ ┃ ┃ ┗ 📜page.module.css
+ ┃ ┃ ┣ 📂subject-assignments
+ ┃ ┃ ┃ ┣ 📂components
+ ┃ ┃ ┃ ┃ ┣ 📜AssignmentForm.jsx
+ ┃ ┃ ┃ ┃ ┣ 📜AssignmentForm.module.css
+ ┃ ┃ ┃ ┃ ┣ 📜AssignmentList.jsx
+ ┃ ┃ ┃ ┃ ┗ 📜AssignmentList.module.css
+ ┃ ┃ ┃ ┣ 📂services
+ ┃ ┃ ┃ ┃ ┗ 📜assignmentService.js
+ ┃ ┃ ┃ ┣ 📜page.jsx
+ ┃ ┃ ┃ ┗ 📜page.module.css
+ ┃ ┃ ┣ 📜page.jsx
+ ┃ ┃ ┗ 📜page.module.css
+ ┃ ┣ 📜layout.jsx
+ ┃ ┗ 📜layout.module.css
+ ┣ 📂(auth)
+ ┃ ┣ 📂login
+ ┃ ┃ ┣ 📂components
+ ┃ ┃ ┃ ┣ 📜LoginForm.jsx
+ ┃ ┃ ┃ ┗ 📜LoginForm.module.css
+ ┃ ┃ ┣ 📂services
+ ┃ ┃ ┃ ┗ 📜authService.js
+ ┃ ┃ ┣ 📜page.jsx
+ ┃ ┃ ┗ 📜page.module.css
+ ┃ ┗ 📜layout.jsx
+ ┣ 📂api
+ ┃ ┣ 📂academic-terms
+ ┃ ┃ ┣ 📂[id]
+ ┃ ┃ ┃ ┗ 📜route.js
+ ┃ ┃ ┗ 📜route.js
+ ┃ ┣ 📂auth
+ ┃ ┃ ┣ 📂login
+ ┃ ┃ ┃ ┗ 📜route.js
+ ┃ ┃ ┣ 📂logout
+ ┃ ┃ ┃ ┗ 📜route.js
+ ┃ ┃ ┗ 📂verify-recaptcha
+ ┃ ┃ ┃ ┗ 📜route.js
+ ┃ ┣ 📂curriculum-versions
+ ┃ ┃ ┣ 📂[id]
+ ┃ ┃ ┃ ┗ 📜route.js
+ ┃ ┃ ┗ 📜route.js
+ ┃ ┣ 📂profile
+ ┃ ┃ ┣ 📂password
+ ┃ ┃ ┃ ┗ 📜route.js
+ ┃ ┃ ┗ 📜route.js
+ ┃ ┣ 📂programs
+ ┃ ┃ ┗ 📜route.js
+ ┃ ┣ 📂reports
+ ┃ ┃ ┣ 📂export
+ ┃ ┃ ┃ ┗ 📜route.js
+ ┃ ┃ ┣ 📂section
+ ┃ ┃ ┃ ┗ 📜route.js
+ ┃ ┃ ┣ 📂teacher
+ ┃ ┃ ┃ ┗ 📜route.js
+ ┃ ┃ ┣ 📂venue
+ ┃ ┃ ┃ ┗ 📜route.js
+ ┃ ┃ ┗ 📂_shared
+ ┃ ┃ ┃ ┗ 📜reportData.js
+ ┃ ┣ 📂scheduling
+ ┃ ┃ ┣ 📂conflicts
+ ┃ ┃ ┃ ┣ 📂[id]
+ ┃ ┃ ┃ ┃ ┗ 📜route.js
+ ┃ ┃ ┃ ┗ 📜route.js
+ ┃ ┃ ┣ 📂entries
+ ┃ ┃ ┃ ┣ 📂[id]
+ ┃ ┃ ┃ ┃ ┗ 📜route.js
+ ┃ ┃ ┃ ┗ 📜route.js
+ ┃ ┃ ┣ 📂generate
+ ┃ ┃ ┃ ┣ 📂cancel
+ ┃ ┃ ┃ ┃ ┗ 📜route.js
+ ┃ ┃ ┃ ┗ 📜route.js
+ ┃ ┃ ┗ 📂manual-subjects
+ ┃ ┃ ┃ ┗ 📜route.js
+ ┃ ┣ 📂sections
+ ┃ ┃ ┣ 📂[id]
+ ┃ ┃ ┃ ┗ 📜route.js
+ ┃ ┃ ┗ 📜route.js
+ ┃ ┣ 📂subjects
+ ┃ ┃ ┣ 📂[id]
+ ┃ ┃ ┃ ┗ 📜route.js
+ ┃ ┃ ┗ 📜route.js
+ ┃ ┣ 📂teachers
+ ┃ ┃ ┣ 📂assignments
+ ┃ ┃ ┃ ┣ 📂[id]
+ ┃ ┃ ┃ ┃ ┗ 📜route.js
+ ┃ ┃ ┃ ┗ 📜route.js
+ ┃ ┃ ┣ 📂availability
+ ┃ ┃ ┃ ┣ 📂bulk
+ ┃ ┃ ┃ ┃ ┗ 📜route.js
+ ┃ ┃ ┃ ┣ 📂[id]
+ ┃ ┃ ┃ ┃ ┗ 📜route.js
+ ┃ ┃ ┃ ┗ 📜route.js
+ ┃ ┃ ┣ 📂[id]
+ ┃ ┃ ┃ ┗ 📜route.js
+ ┃ ┃ ┗ 📜route.js
+ ┃ ┗ 📂venues
+ ┃ ┃ ┣ 📂[id]
+ ┃ ┃ ┃ ┗ 📜route.js
+ ┃ ┃ ┗ 📜route.js
+ ┣ 📜globals.css
+ ┣ 📜layout.jsx
+ ┗ 📜page.jsx
+📦components
+ ┣ 📂layout
+ ┃ ┣ 📜AdminHeader.jsx
+ ┃ ┣ 📜AdminHeader.module.css
+ ┃ ┣ 📜AdminSidebar.jsx
+ ┃ ┣ 📜AdminSidebar.module.css
+ ┃ ┣ 📜SidebarNavGroup.jsx
+ ┃ ┣ 📜SidebarNavGroup.module.css
+ ┃ ┣ 📜SidebarNavItem.jsx
+ ┃ ┗ 📜SidebarNavItem.module.css
+ ┣ 📂schedule
+ ┃ ┣ 📜DayHeader.jsx
+ ┃ ┣ 📜DayHeader.module.css
+ ┃ ┣ 📜ScheduleBlock.jsx
+ ┃ ┣ 📜ScheduleBlock.module.css
+ ┃ ┣ 📜ScheduleGrid.jsx
+ ┃ ┣ 📜ScheduleGrid.module.css
+ ┃ ┣ 📜TimeColumn.jsx
+ ┃ ┗ 📜TimeColumn.module.css
+ ┣ 📂shared
+ ┃ ┣ 📜ConfirmDialog.jsx
+ ┃ ┣ 📜ConfirmDialog.module.css
+ ┃ ┣ 📜FilterBar.jsx
+ ┃ ┣ 📜FilterBar.module.css
+ ┃ ┣ 📜PageHeader.jsx
+ ┃ ┣ 📜PageHeader.module.css
+ ┃ ┣ 📜SectionTitle.jsx
+ ┃ ┣ 📜SectionTitle.module.css
+ ┃ ┣ 📜StatusBadge.jsx
+ ┃ ┗ 📜StatusBadge.module.css
+ ┗ 📂ui
+ ┃ ┣ 📜AvatarUpload.jsx
+ ┃ ┣ 📜AvatarUpload.module.css
+ ┃ ┣ 📜Badge.jsx
+ ┃ ┣ 📜Badge.module.css
+ ┃ ┣ 📜Button.jsx
+ ┃ ┣ 📜Button.module.css
+ ┃ ┣ 📜Card.jsx
+ ┃ ┣ 📜Card.module.css
+ ┃ ┣ 📜ColorPicker.jsx
+ ┃ ┣ 📜ColorPicker.module.css
+ ┃ ┣ 📜EmptyState.jsx
+ ┃ ┣ 📜EmptyState.module.css
+ ┃ ┣ 📜ImagePreview.jsx
+ ┃ ┣ 📜ImagePreview.module.css
+ ┃ ┣ 📜Input.jsx
+ ┃ ┣ 📜Input.module.css
+ ┃ ┣ 📜LoadingSpinner.jsx
+ ┃ ┣ 📜LoadingSpinner.module.css
+ ┃ ┣ 📜Modal.jsx
+ ┃ ┣ 📜Modal.module.css
+ ┃ ┣ 📜Select.jsx
+ ┃ ┣ 📜Select.module.css
+ ┃ ┣ 📜Skeleton.jsx
+ ┃ ┣ 📜Skeleton.module.css
+ ┃ ┣ 📜Textarea.jsx
+ ┃ ┣ 📜Textarea.module.css
+ ┃ ┣ 📜Toast.jsx
+ ┃ ┗ 📜Toast.module.css
+📦config
+ ┣ 📜navigation.js
+ ┣ 📜programs.js
+ ┣ 📜scheduleRules.js
+ ┣ 📜site.js
+ ┗ 📜supabase.js
+📦hooks
+ ┣ 📜useConflicts.js
+ ┣ 📜useScheduleEntries.js
+ ┣ 📜useSections.js
+ ┣ 📜useSubjects.js
+ ┣ 📜useTeachers.js
+ ┣ 📜useTerms.js
+ ┣ 📜useToast.js
+ ┗ 📜useVenues.js
+📦lib
+ ┣ 📂scheduling
+ ┃ ┣ 📜conflictChecker.js
+ ┃ ┣ 📜engine.js
+ ┃ ┣ 📜generationCancellation.js
+ ┃ ┣ 📜loadBalancer.js
+ ┃ ┣ 📜patternResolver.js
+ ┃ ┣ 📜restrictions.js
+ ┃ ┣ 📜timeSlotUtils.js
+ ┃ ┗ 📜venueMapper.js
+ ┣ 📜supabaseAdmin.js
+ ┗ 📜supabaseClient.js
+📦public
+ ┣ 📂icons
+ ┣ 📂images
+ ┃ ┣ 📜login-bg.jpg
+ ┃ ┣ 📜psu-logo.png
+ ┃ ┗ 📜schedy-logo.png
+ ┣ 📜file.svg
+ ┣ 📜globe.svg
+ ┣ 📜next.svg
+ ┣ 📜vercel.svg
+ ┗ 📜window.svg
+📦styles
+ ┣ 📂color
+ ┃ ┗ 📜colorGuide.txt
+ ┣ 📜animations.css
+ ┣ 📜colors.css
+ ┣ 📜fonts.css
+ ┗ 📜spacing.css
+📦utils
+ ┣ 📜colorUtils.js
+ ┣ 📜constants.js
+ ┣ 📜exportUtils.js
+ ┣ 📜formatters.js
+ ┣ 📜helpers.js
+ ┣ 📜manageScheduleExport.js
+ ┣ 📜nstpSubjects.js
+ ┣ 📜timeUtils.js
+ ┣ 📜uploadUtils.js
+ ┗ 📜validation.js

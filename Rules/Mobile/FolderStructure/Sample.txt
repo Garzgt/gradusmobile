@@ -1,0 +1,145 @@
+📦src
+ ┣ 📂components
+ ┃ ┣ 📜Button.jsx
+ ┃ ┣ 📜Button.styles.js
+ ┃ ┣ 📜Card.jsx
+ ┃ ┣ 📜Card.styles.js
+ ┃ ┣ 📜EmptyState.jsx
+ ┃ ┣ 📜EmptyState.styles.js
+ ┃ ┣ 📜ImagePickerBox.jsx
+ ┃ ┣ 📜ImagePickerBox.styles.js
+ ┃ ┣ 📜index.js
+ ┃ ┣ 📜Input.jsx
+ ┃ ┣ 📜Input.styles.js
+ ┃ ┣ 📜LoadingSpinner.jsx
+ ┃ ┣ 📜LoadingSpinner.styles.js
+ ┃ ┣ 📜Modal.jsx
+ ┃ ┣ 📜Modal.styles.js
+ ┃ ┣ 📜SearchBar.jsx
+ ┃ ┣ 📜SearchBar.styles.js
+ ┃ ┣ 📜SkeletonLoader.jsx
+ ┃ ┣ 📜SkeletonLoader.styles.js
+ ┃ ┣ 📜Toast.jsx
+ ┃ ┗ 📜Toast.styles.js
+ ┣ 📂config
+ ┃ ┗ 📜supabase.js
+ ┣ 📂context
+ ┃ ┗ 📜ToastContext.jsx
+ ┣ 📂navigation
+ ┃ ┣ 📜AppNavigator.jsx
+ ┃ ┣ 📜AppNavigator.styles.js
+ ┃ ┣ 📜TabNavigator.jsx
+ ┃ ┗ 📜TabNavigator.styles.js
+ ┣ 📂screens
+ ┃ ┣ 📂Category
+ ┃ ┃ ┣ 📂components
+ ┃ ┃ ┃ ┣ 📜CategoryCard.jsx
+ ┃ ┃ ┃ ┣ 📜CategoryCard.styles.js
+ ┃ ┃ ┃ ┣ 📜CategoryForm.jsx
+ ┃ ┃ ┃ ┗ 📜CategoryForm.styles.js
+ ┃ ┃ ┣ 📂services
+ ┃ ┃ ┃ ┗ 📜categoryService.js
+ ┃ ┃ ┣ 📜AddCategory.jsx
+ ┃ ┃ ┣ 📜AddCategory.styles.js
+ ┃ ┃ ┣ 📜CategoryList.jsx
+ ┃ ┃ ┗ 📜CategoryList.styles.js
+ ┃ ┣ 📂Dashboard
+ ┃ ┃ ┣ 📂components
+ ┃ ┃ ┃ ┣ 📜RecentOrders.jsx
+ ┃ ┃ ┃ ┣ 📜RecentOrders.styles.js
+ ┃ ┃ ┃ ┣ 📜StatsCard.jsx
+ ┃ ┃ ┃ ┗ 📜StatsCard.styles.js
+ ┃ ┃ ┣ 📂services
+ ┃ ┃ ┃ ┗ 📜dashboardService.js
+ ┃ ┃ ┣ 📜Dashboard.jsx
+ ┃ ┃ ┗ 📜Dashboard.styles.js
+ ┃ ┣ 📂DeliveryProof
+ ┃ ┃ ┣ 📂components
+ ┃ ┃ ┃ ┣ 📜CategoryFilter.jsx
+ ┃ ┃ ┃ ┣ 📜CategoryFilter.styles.js
+ ┃ ┃ ┃ ┣ 📜ProofCard.jsx
+ ┃ ┃ ┃ ┣ 📜ProofCard.styles.js
+ ┃ ┃ ┃ ┣ 📜ProofGallery.jsx
+ ┃ ┃ ┃ ┗ 📜ProofGallery.styles.js
+ ┃ ┃ ┣ 📂services
+ ┃ ┃ ┃ ┗ 📜deliveryProofService.js
+ ┃ ┃ ┣ 📜AddDeliveryProof.jsx
+ ┃ ┃ ┣ 📜AddDeliveryProof.styles.js
+ ┃ ┃ ┣ 📜DeliveryProofList.jsx
+ ┃ ┃ ┗ 📜DeliveryProofList.styles.js
+ ┃ ┣ 📂Login
+ ┃ ┃ ┣ 📜Login.jsx
+ ┃ ┃ ┗ 📜Login.styles.js
+ ┃ ┣ 📂Order
+ ┃ ┃ ┣ 📂components
+ ┃ ┃ ┃ ┣ 📜CustomerInfo.jsx
+ ┃ ┃ ┃ ┣ 📜CustomerInfo.styles.js
+ ┃ ┃ ┃ ┣ 📜OrderCard.jsx
+ ┃ ┃ ┃ ┣ 📜OrderCard.styles.js
+ ┃ ┃ ┃ ┣ 📜OrderForm.jsx
+ ┃ ┃ ┃ ┣ 📜OrderForm.styles.js
+ ┃ ┃ ┃ ┣ 📜OrderItemRow.jsx
+ ┃ ┃ ┃ ┣ 📜OrderItemRow.styles.js
+ ┃ ┃ ┃ ┣ 📜OrderSummary.jsx
+ ┃ ┃ ┃ ┣ 📜OrderSummary.styles.js
+ ┃ ┃ ┃ ┣ 📜ProductSelector.jsx
+ ┃ ┃ ┃ ┗ 📜ProductSelector.styles.js
+ ┃ ┃ ┣ 📂services
+ ┃ ┃ ┃ ┣ 📜orderItemService.js
+ ┃ ┃ ┃ ┣ 📜orderService.js
+ ┃ ┃ ┃ ┗ 📜receiptService.js
+ ┃ ┃ ┣ 📜AddOrder.jsx
+ ┃ ┃ ┣ 📜AddOrder.styles.js
+ ┃ ┃ ┣ 📜OrderDetail.jsx
+ ┃ ┃ ┣ 📜OrderDetail.styles.js
+ ┃ ┃ ┣ 📜OrderList.jsx
+ ┃ ┃ ┣ 📜OrderList.styles.js
+ ┃ ┃ ┣ 📜ReceiptPreview.jsx
+ ┃ ┃ ┗ 📜ReceiptPreview.styles.js
+ ┃ ┣ 📂Product
+ ┃ ┃ ┣ 📂components
+ ┃ ┃ ┃ ┣ 📜ProductCard.jsx
+ ┃ ┃ ┃ ┣ 📜ProductCard.styles.js
+ ┃ ┃ ┃ ┣ 📜ProductForm.jsx
+ ┃ ┃ ┃ ┣ 📜ProductForm.styles.js
+ ┃ ┃ ┃ ┣ 📜SpecificationInput.jsx
+ ┃ ┃ ┃ ┗ 📜SpecificationInput.styles.js
+ ┃ ┃ ┣ 📂services
+ ┃ ┃ ┃ ┣ 📜productImageService.js
+ ┃ ┃ ┃ ┗ 📜productService.js
+ ┃ ┃ ┣ 📜AddProduct.jsx
+ ┃ ┃ ┣ 📜AddProduct.styles.js
+ ┃ ┃ ┣ 📜ProductDetail.jsx
+ ┃ ┃ ┣ 📜ProductDetail.styles.js
+ ┃ ┃ ┣ 📜ProductList.jsx
+ ┃ ┃ ┗ 📜ProductList.styles.js
+ ┃ ┗ 📂Profile
+ ┃ ┃ ┣ 📂components
+ ┃ ┃ ┃ ┣ 📜ChangePassword.jsx
+ ┃ ┃ ┃ ┣ 📜ChangePassword.styles.js
+ ┃ ┃ ┃ ┣ 📜LogoutButton.jsx
+ ┃ ┃ ┃ ┣ 📜LogoutButton.styles.js
+ ┃ ┃ ┃ ┣ 📜ProfileInfo.jsx
+ ┃ ┃ ┃ ┗ 📜ProfileInfo.styles.js
+ ┃ ┃ ┣ 📂services
+ ┃ ┃ ┃ ┗ 📜profileService.js
+ ┃ ┃ ┣ 📜Profile.jsx
+ ┃ ┃ ┗ 📜Profile.styles.js
+ ┣ 📂styles
+ ┃ ┣ 📜colors.js
+ ┃ ┣ 📜commonStyles.js
+ ┃ ┣ 📜fonts.js
+ ┃ ┣ 📜index.js
+ ┃ ┗ 📜spacing.js
+ ┣ 📂utils
+ ┃ ┣ 📜constants.js
+ ┃ ┣ 📜formatters.js
+ ┃ ┣ 📜helpers.js
+ ┃ ┣ 📜storage.js
+ ┃ ┗ 📜validation.js
+ ┗ 📜App.jsx
+ 📦assets
+ ┣ 📜adaptive-icon.png
+ ┣ 📜favicon.png
+ ┣ 📜icon.png
+ ┗ 📜splash-icon.png
