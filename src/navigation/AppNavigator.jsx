@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import AuthNavigator from './AuthNavigator';
 import StudentTabNavigator from './StudentTabNavigator';
+import NotificationInbox from '../screens/Notifications/NotificationInbox';
 import colors from '../styles/colors';
 import routes from '../config/routes';
 import DomainBlocked from '../screens/Auth/DomainBlocked';
@@ -35,7 +36,10 @@ export default function AppNavigator() {
         ) : !isProfileComplete ? (
           <Stack.Screen name={routes.PROFILE_SETUP} component={ProfileSetup} />
         ) : (
-          <Stack.Screen name="StudentApp" component={StudentTabNavigator} />
+          <>
+            <Stack.Screen name="StudentApp" component={StudentTabNavigator} />
+            <Stack.Screen name={routes.NOTIFICATIONS} component={NotificationInbox} />
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>

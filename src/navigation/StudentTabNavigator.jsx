@@ -7,17 +7,20 @@ import routes from '../config/routes';
 import HomeDashboard from '../screens/Home/HomeDashboard';
 import WeeklySchedule from '../screens/Schedule/WeeklySchedule';
 import GradesStackNavigator from './GradesStackNavigator';
-import NotificationInbox from '../screens/Notifications/NotificationInbox';
+import AdvisingStackNavigator from './AdvisingStackNavigator';
 import Profile from '../screens/Profile/Profile';
 
 const Tab = createBottomTabNavigator();
 
-const TAB_ICONS = {
-  [routes.HOME]:          { on: 'home',          off: 'home-outline' },
-  [routes.SCHEDULE]:      { on: 'calendar',      off: 'calendar-outline' },
-  [routes.GRADES]:        { on: 'bar-chart',     off: 'bar-chart-outline' },
-  [routes.NOTIFICATIONS]: { on: 'notifications', off: 'notifications-outline' },
-  [routes.PROFILE]:       { on: 'person',        off: 'person-outline' },
+const getIcon = (name, focused) => {
+  switch (name) {
+    case routes.HOME:          return focused ? 'home'          : 'home-outline';
+    case routes.SCHEDULE:      return focused ? 'calendar'      : 'calendar-outline';
+    case routes.GRADES:        return focused ? 'bar-chart'     : 'bar-chart-outline';
+    case routes.ADVISING_PLAN: return focused ? 'document-text' : 'document-text-outline';
+    case routes.PROFILE:       return focused ? 'person'        : 'person-outline';
+    default:                   return 'ellipse-outline';
+  }
 };
 
 function FloatingTabBar({ state, navigation }) {
@@ -28,7 +31,6 @@ function FloatingTabBar({ state, navigation }) {
       <View style={s.bar}>
         {state.routes.map((route) => {
           const focused = state.index === state.routes.indexOf(route);
-          const icons = TAB_ICONS[route.name] ?? { on: 'ellipse', off: 'ellipse-outline' };
 
           const onPress = () => {
             const event = navigation.emit({
@@ -50,7 +52,7 @@ function FloatingTabBar({ state, navigation }) {
             >
               <View style={[s.circle, focused && s.circleActive]}>
                 <Ionicons
-                  name={focused ? icons.on : icons.off}
+                  name={getIcon(route.name, focused)}
                   size={22}
                   color={focused ? '#FFFFFF' : '#9DB5CC'}
                 />
@@ -111,7 +113,7 @@ export default function StudentTabNavigator() {
       <Tab.Screen name={routes.HOME}          component={HomeDashboard} />
       <Tab.Screen name={routes.SCHEDULE}      component={WeeklySchedule} />
       <Tab.Screen name={routes.GRADES}        component={GradesStackNavigator} />
-      <Tab.Screen name={routes.NOTIFICATIONS} component={NotificationInbox} />
+      <Tab.Screen name={routes.ADVISING_PLAN} component={AdvisingStackNavigator} />
       <Tab.Screen name={routes.PROFILE}       component={Profile} />
     </Tab.Navigator>
   );

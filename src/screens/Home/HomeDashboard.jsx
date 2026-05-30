@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../config/supabase';
 import DashboardHeader from './components/DashboardHeader';
+import ActiveTermCard from './components/ActiveTermCard';
 import GradeSnapshotCard from './components/GradeSnapshotCard';
 import EnrollmentStatusCard from './components/EnrollmentStatusCard';
 
@@ -40,6 +41,7 @@ export default function HomeDashboard() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2A7AB6" />
         }
       >
+        <ActiveTermCard />
         <GradeSnapshotCard studentId={student?.id} />
         <View style={styles.enrollWrap}>
           <EnrollmentStatusCard studentId={student?.id} />

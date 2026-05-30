@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../config/supabase';
+import SkeletonBox from '../../../components/SkeletonLoader';
 
 const STATUS_CONFIG = {
   enrolled: { label: 'Enrolled', color: '#1a6e4a', bg: '#E8F5EE', icon: 'checkmark-circle' },
@@ -46,7 +47,14 @@ export default function EnrollmentStatusCard({ studentId }) {
       <View style={styles.dividerLine} />
 
       {loading ? (
-        <ActivityIndicator size="small" color="#2A7AB6" style={{ marginTop: 12 }} />
+        <View style={{ gap: 12 }}>
+          {[0, 1, 2].map((i) => (
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <SkeletonBox width={72} height={24} borderRadius={8} />
+              <SkeletonBox width={140} height={13} borderRadius={6} />
+            </View>
+          ))}
+        </View>
       ) : isEnrolled ? (
         <View style={styles.subjectList}>
           {subjects.map((row, i) => {

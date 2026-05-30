@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../../../config/supabase';
 import routes from '../../../config/routes';
+import SkeletonBox from '../../../components/SkeletonLoader';
 
 export default function GradeSnapshotCard({ studentId }) {
   const navigation = useNavigation();
@@ -35,7 +36,7 @@ export default function GradeSnapshotCard({ studentId }) {
       <View style={styles.left}>
         <Text style={styles.label}>CURRENT GWA</Text>
         {loading ? (
-          <ActivityIndicator size="small" color="#2A7AB6" style={{ marginTop: 8, marginBottom: 4 }} />
+          <SkeletonBox width={110} height={52} borderRadius={10} style={{ marginTop: 6, marginBottom: 4 }} />
         ) : (
           <Text style={styles.gwa}>{gwa ?? '—'}</Text>
         )}
