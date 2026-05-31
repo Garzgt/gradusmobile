@@ -15,8 +15,10 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../config/supabase';
 import routes from '../../config/routes';
+import SkeletonBox from '../../components/SkeletonLoader';
 import SubjectPoolList from './components/SubjectPoolList';
-import { buildEligiblePools, formatSemesterLabel } from './services/advisingPlanService';
+import { buildEligiblePools, formatSemesterLabel, fetchScheduleEntriesForSubjects } from './services/advisingPlanService';
+import { autoAssignFromSchedule } from './services/advisingValidationService';
 
 const SCAN_STORAGE_KEY = 'advising.evaluationScan';
 const SELECTION_STORAGE_KEY = 'advising.selectedSubjects';
@@ -38,13 +40,17 @@ export default function BuildAdvisingPlan() {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [scanData, setScanData] = useState(null);
   const [student, setStudent] = useState(null);
   const [activeTerm, setActiveTerm] = useState(null);
   const [selectedKeys, setSelectedKeys] = useState(new Set());
   const [selectionSavedAt, setSelectionSavedAt] = useState('');
+  const [availableEntries, setAvailableEntries] = useState({});
+  const [teacherSelections, setTeacherSelections] = useState({});
   const [error, setError] = useState('');
   const hasLoadedRef = useRef(false);
+  const hasAutoSelectedRef = useRef(false);
 
   const loadData = useCallback(async (isRefresh = false) => {
     if (!user) {
@@ -66,27 +72,37 @@ export default function BuildAdvisingPlan() {
           .from('academic_terms')
           .select('id, semester, school_year')
           .eq('is_active', true)
-          .maybeSingle(),
+          .limit(1),
       ]);
 
-      if (scanRaw) {
-        const parsedScan = JSON.parse(scanRaw);
-        setScanData(parsedScan);
-      } else {
+      // Set student and term first — must not be blocked by scan/selection parsing below
+      console.log('[ADVISING] studentResp:', studentResp?.data, 'termResp:', termResp?.data);
+      setStudent(studentResp?.data ?? null);
+      setActiveTerm(termResp?.data?.[0] ?? null);
+
+      // Parse scan data in isolation so a corrupt cache doesn't block the above
+      try {
+        const parsed = scanRaw ? JSON.parse(scanRaw) : null;
+        console.log('[ADVISING] scanData loaded:', parsed ? `${parsed.subjects?.length} subjects` : 'null');
+        setScanData(parsed);
+      } catch {
+        console.log('[ADVISING] scanData parse failed');
         setScanData(null);
       }
 
-      if (selectionRaw) {
-        const parsedSelection = JSON.parse(selectionRaw);
-        const storedKeys = Array.isArray(parsedSelection?.selectedKeys)
-          ? parsedSelection.selectedKeys
-          : [];
-        setSelectedKeys(new Set(storedKeys));
-        setSelectionSavedAt(parsedSelection?.updatedAt || '');
+      // Parse saved selection in isolation
+      try {
+        if (selectionRaw) {
+          const parsedSelection = JSON.parse(selectionRaw);
+          const storedKeys = Array.isArray(parsedSelection?.selectedKeys)
+            ? parsedSelection.selectedKeys
+            : [];
+          setSelectedKeys(new Set(storedKeys));
+          setSelectionSavedAt(parsedSelection?.updatedAt || '');
+        }
+      } catch {
+        // leave selection as default empty
       }
-
-      setStudent(studentResp?.data ?? null);
-      setActiveTerm(termResp?.data ?? null);
     } catch (loadError) {
       setError('Failed to load advising data. Please try again.');
     }
@@ -136,11 +152,20 @@ export default function BuildAdvisingPlan() {
     if (!scanData?.subjects?.length || !student?.current_year_level || !termSemester) {
       return { eligibleBack: [], eligibleCurrent: [], blocked: [] };
     }
-    return buildEligiblePools({
+    const pools = buildEligiblePools({
       subjects: scanData.subjects,
       currentYearLevel: student.current_year_level,
       currentSemester: termSemester,
     });
+    console.log('[ADVISING] buildEligiblePools:', {
+      currentYearLevel: student.current_year_level,
+      currentSemester: termSemester,
+      totalScanned: scanData.subjects?.length,
+      eligibleBack: pools.eligibleBack?.length,
+      eligibleCurrent: pools.eligibleCurrent?.length,
+      blocked: pools.blocked?.length,
+    });
+    return pools;
   }, [scanData, student, termSemester]);
 
   const eligibleBackWithKeys = useMemo(
@@ -166,6 +191,42 @@ export default function BuildAdvisingPlan() {
     });
   }, [allEligible]);
 
+  // Auto-select all back subjects on first load (they are priority).
+  useEffect(() => {
+    if (hasAutoSelectedRef.current) return;
+    if (!hasLoadedRef.current) return;
+    if (eligibleBackWithKeys.length === 0) return;
+    hasAutoSelectedRef.current = true;
+    setSelectedKeys((prev) => {
+      if (prev.size > 0) return prev; // respect restored selection from storage
+      return new Set(eligibleBackWithKeys.map((s) => s.key));
+    });
+  }, [eligibleBackWithKeys]);
+
+  // Fetch published schedule entries for all eligible subjects whenever the list changes.
+  const eligibleCodesKey = useMemo(
+    () => allEligible.map((s) => s.subjectCode).sort().join(','),
+    [allEligible]
+  );
+  useEffect(() => {
+    if (!activeTerm?.id || !eligibleCodesKey) {
+      console.log('[ADVISING] entries fetch skipped — activeTerm.id:', activeTerm?.id, 'eligibleCodesKey:', eligibleCodesKey);
+      return;
+    }
+    const codes = eligibleCodesKey.split(',').filter(Boolean);
+    console.log('[ADVISING] fetching entries for', codes.length, 'subjects, termId:', activeTerm.id);
+    fetchScheduleEntriesForSubjects(activeTerm.id, codes, supabase)
+      .then((result) => {
+        console.log('[ADVISING] availableEntries result keys:', Object.keys(result));
+        setAvailableEntries(result);
+      })
+      .catch((err) => console.log('[ADVISING] fetchScheduleEntriesForSubjects error:', err));
+  }, [activeTerm?.id, eligibleCodesKey]);
+
+  const setTeacherForSubject = useCallback((subjectKey, entry) => {
+    setTeacherSelections((prev) => ({ ...prev, [subjectKey]: entry }));
+  }, []);
+
   const toggleSubject = useCallback((key) => {
     setSelectedKeys((prev) => {
       const next = new Set(prev);
@@ -179,6 +240,47 @@ export default function BuildAdvisingPlan() {
     () => allEligible.filter((subject) => selectedKeys.has(subject.key)),
     [allEligible, selectedKeys]
   );
+
+  const handleGeneratePlan = useCallback(async () => {
+    if (!selectedSubjects.length || !activeTerm?.id) return;
+    setGenerating(true);
+    setError('');
+    try {
+      const entriesToUse = {};
+      const notFound = [];
+
+      selectedSubjects.forEach((subject) => {
+        const { subjectCode, key } = subject;
+        const chosen = teacherSelections[key];
+        if (chosen?.teacherId && availableEntries[subjectCode]?.length) {
+          // Student picked a teacher → filter to only that teacher's entries, system picks best slot
+          entriesToUse[subjectCode] = availableEntries[subjectCode].filter(
+            (e) => e.teacher_id === chosen.teacherId,
+          );
+        } else if (availableEntries[subjectCode]?.length) {
+          // No teacher picked → auto-assign from all available entries across all teachers
+          entriesToUse[subjectCode] = availableEntries[subjectCode];
+        } else {
+          notFound.push({ subjectCode, reason: 'No available schedule found.' });
+        }
+      });
+
+      const { assigned, unscheduled } = autoAssignFromSchedule(entriesToUse);
+
+      navigation.navigate(routes.ADVISING_FORM_PREVIEW, {
+        assigned,
+        unscheduled: [...unscheduled, ...notFound],
+        termLabel,
+        termId: activeTerm.id,
+        selectedSubjects,
+        termSemester: activeTerm.semester,
+        schoolYear: activeTerm.school_year,
+      });
+    } catch (err) {
+      setError('Failed to generate plan. Please try again.');
+    }
+    setGenerating(false);
+  }, [selectedSubjects, activeTerm, navigation, termLabel, teacherSelections, availableEntries]);
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
@@ -288,8 +390,11 @@ export default function BuildAdvisingPlan() {
 
         {loading ? (
           <View style={styles.loadingCard}>
-            <ActivityIndicator color="#2A7AB6" />
-            <Text style={styles.loadingText}>Loading advising data...</Text>
+            <View style={{ gap: 10 }}>
+              <SkeletonBox width="100%" height={14} borderRadius={7} />
+              <SkeletonBox width="70%" height={14} borderRadius={7} />
+              <SkeletonBox width="85%" height={14} borderRadius={7} />
+            </View>
           </View>
         ) : !hasScan ? (
           <View style={styles.emptyCard}>
@@ -317,6 +422,9 @@ export default function BuildAdvisingPlan() {
               selectedKeys={selectedKeys}
               onToggle={toggleSubject}
               emptyLabel="No eligible back subjects."
+              availableEntries={availableEntries}
+              teacherSelections={teacherSelections}
+              onTeacherSelect={setTeacherForSubject}
             />
 
             <SubjectPoolList
@@ -326,6 +434,9 @@ export default function BuildAdvisingPlan() {
               selectedKeys={selectedKeys}
               onToggle={toggleSubject}
               emptyLabel="No eligible current subjects."
+              availableEntries={availableEntries}
+              teacherSelections={teacherSelections}
+              onTeacherSelect={setTeacherForSubject}
             />
 
             {noEligibleSubjects ? (
@@ -347,13 +458,28 @@ export default function BuildAdvisingPlan() {
             ) : null}
 
             <View style={styles.footerCard}>
-              <Text style={styles.footerTitle}>Selected subjects: {selectedCount}</Text>
+              <Text style={styles.footerTitle}>Selected: {selectedCount} subject{selectedCount !== 1 ? 's' : ''}</Text>
               <Text style={styles.footerText}>
-                Selections are saved. Next step is choosing teachers from published schedules.
+                The app will auto-assign the best available schedule for each subject and flag any conflicts.
               </Text>
               {selectionSavedAt ? (
                 <Text style={styles.footerMeta}>Last saved: {formatTimestamp(selectionSavedAt)}</Text>
               ) : null}
+              <TouchableOpacity
+                style={[styles.generateBtn, (selectedCount === 0 || generating) && styles.generateBtnDisabled]}
+                onPress={handleGeneratePlan}
+                disabled={selectedCount === 0 || generating}
+                activeOpacity={0.8}
+              >
+                {generating ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Ionicons name="flash-outline" size={16} color="#FFFFFF" />
+                )}
+                <Text style={styles.generateBtnText}>
+                  {generating ? 'Generating...' : 'Generate Plan'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </>
         )}
@@ -653,5 +779,23 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#8BA4BC',
     marginTop: 6,
+  },
+  generateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#1a3c5e',
+    borderRadius: 12,
+    paddingVertical: 12,
+    marginTop: 12,
+  },
+  generateBtnDisabled: {
+    backgroundColor: '#C8DFF0',
+  },
+  generateBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

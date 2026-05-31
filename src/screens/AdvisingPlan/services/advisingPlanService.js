@@ -90,6 +90,82 @@ export function formatSemesterLabel(semester) {
 	return 'Semester';
 }
 
+// Fetch published schedule_entries for the given subject codes in a term.
+// Returns { [portalSubjectCode]: schedule_entry[] } grouped by original portal code.
+export async function fetchScheduleEntriesForSubjects(termId, subjectCodes, supabase) {
+	console.log('[ADVISING] fetchScheduleEntriesForSubjects called', { termId, subjectCodes });
+	if (!termId || !subjectCodes?.length) {
+		console.log('[ADVISING] Early exit: missing termId or subjectCodes');
+		return {};
+	}
+
+	// Normalize portal codes to match the normalized_subject_code column in Supabase
+	const normalizedToOriginal = {};
+	subjectCodes.forEach((code) => {
+		const norm = normalizeSubjectCode(code);
+		if (norm) normalizedToOriginal[norm] = code;
+	});
+	const normalizedCodes = Object.keys(normalizedToOriginal);
+	console.log('[ADVISING] Normalized codes to query:', normalizedCodes);
+	if (!normalizedCodes.length) return {};
+
+	// Look up subjects by normalized_subject_code
+	const { data: subjects, error: subErr } = await supabase
+		.from('subjects')
+		.select('id, subject_code, normalized_subject_code, title, credit_units')
+		.in('normalized_subject_code', normalizedCodes);
+
+	console.log('[ADVISING] subjects query result:', { subjects, subErr });
+	if (subErr) { console.log('[ADVISING] subjects query ERROR:', subErr); return {}; }
+	if (!subjects?.length) { console.log('[ADVISING] No subjects found for normalized codes'); return {}; }
+
+	// Map subject_id → original portal code
+	const idToOriginalCode = {};
+	const subjectIds = [];
+	subjects.forEach((s) => {
+		const origCode = normalizedToOriginal[s.normalized_subject_code];
+		if (origCode) {
+			idToOriginalCode[s.id] = origCode;
+			subjectIds.push(s.id);
+		}
+	});
+	console.log('[ADVISING] Matched subject IDs:', subjectIds, 'idToOriginalCode:', idToOriginalCode);
+
+	if (!subjectIds.length) {
+		console.log('[ADVISING] No subject IDs matched');
+		return {};
+	}
+
+	// Fetch entries for the active term (website publish sets is_locked on the term, not schedule_status on entries)
+	const { data: entries, error: entErr } = await supabase
+		.from('schedule_entries')
+		.select(`
+			id, subject_id, section_id, teacher_id, venue_id,
+			day_of_week, start_time, end_time, schedule_status,
+			subjects:subject_id ( id, subject_code, normalized_subject_code, title, credit_units, lec_units, lab_units, delivery_pattern, color_hex ),
+			sections:section_id ( id, section_code, year_level, programs:program_id ( code, name ) ),
+			teachers:teacher_id ( id, first_name, last_name ),
+			venues:venue_id ( id, name )
+		`)
+		.eq('term_id', termId)
+		.in('subject_id', subjectIds);
+
+	console.log('[ADVISING] schedule_entries query result:', { count: entries?.length, entErr, sample: entries?.[0] });
+	if (entErr) { console.log('[ADVISING] schedule_entries ERROR:', entErr); return {}; }
+	if (!entries?.length) { console.log('[ADVISING] No entries found for these subjects in active term'); return {}; }
+
+	// Group by original portal subject code
+	const grouped = {};
+	entries.forEach((entry) => {
+		const origCode = idToOriginalCode[entry.subject_id];
+		if (!origCode) return;
+		if (!grouped[origCode]) grouped[origCode] = [];
+		grouped[origCode].push(entry);
+	});
+
+	return grouped;
+}
+
 export default {
 	DEFAULT_COMPLETED_STATUSES,
 	normalizeSubjectCode,
