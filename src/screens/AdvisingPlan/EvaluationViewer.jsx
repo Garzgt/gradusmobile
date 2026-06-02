@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
@@ -27,20 +27,7 @@ export default function EvaluationViewer() {
 
   const summary = useMemo(() => summarizeEvaluation(subjects), [subjects]);
 
-  const statusText = useMemo(() => {
-    if (scanState === 'scanning') return 'Scanning your evaluation table...';
-    if (scanState === 'done') return `Scan complete. ${summary.total} subjects found.`;
-    if (scanState === 'error') return scanError || 'Scan failed. Please try again.';
-    if (canScan) return 'Tap Scan to read your evaluation results.';
-    return 'Open the evaluation page to enable scanning.';
-  }, [scanState, scanError, summary.total, canScan]);
-
-  const statusMeta = useMemo(() => {
-    if (scanState !== 'done') return '';
-    const notCompleted = summary.total - summary.completed;
-    return `Completed: ${summary.completed}  |  Not completed: ${notCompleted}`;
-  }, [scanState, summary.total, summary.completed]);
-
+  // ── scan logic unchanged ──────────────────────────────────────────────────
   const handleNavigationChange = useCallback((navState) => {
     const url = navState?.url || '';
     setCanScan(url.includes('#student/evaluation'));
@@ -64,13 +51,10 @@ export default function EvaluationViewer() {
       try {
         await AsyncStorage.setItem(
           STORAGE_KEY,
-          JSON.stringify({
-            subjects: nextSubjects,
-            scannedAt: new Date().toISOString(),
-          })
+          JSON.stringify({ subjects: nextSubjects, scannedAt: new Date().toISOString() })
         );
-      } catch (error) {
-        // Non-blocking storage failure.
+      } catch {
+        // non-blocking
       }
       return;
     }
@@ -80,55 +64,73 @@ export default function EvaluationViewer() {
       setScanError(parsed.message || 'Scan failed.');
     }
   }, []);
+  // ─────────────────────────────────────────────────────────────────────────
 
-  const contentStyle = useMemo(
-    () => [styles.content, { paddingBottom: insets.bottom + 40 }],
-    [insets.bottom]
-  );
-  const webWrapStyle = useMemo(
-    () => [styles.webWrap, { marginBottom: insets.bottom + 8 }],
-    [insets.bottom]
-  );
-  const actionWrapStyle = useMemo(
-    () => [styles.actionWrap, { bottom: insets.bottom + 8 }],
-    [insets.bottom]
-  );
+  const notCompleted = summary.total - summary.completed;
+
+  const bannerConfig = useMemo(() => {
+    if (scanState === 'scanning') {
+      return { bg: '#1a3c5e', spinning: true, text: 'Scanning your evaluation…' };
+    }
+    if (scanState === 'error') {
+      return { bg: '#FADBD8', icon: 'alert-circle', iconColor: '#C0392B', text: scanError || 'Scan failed. Please try again.', textColor: '#C0392B' };
+    }
+    if (scanState === 'done') {
+      return { bg: '#1a3c5e', icon: 'checkmark-circle', iconColor: '#4FC3F7', done: true };
+    }
+    if (canScan) {
+      return { bg: '#2A7AB6', icon: 'radio-button-on', iconColor: '#FFFFFF', text: 'Evaluation page detected. Tap Scan when ready.', textColor: '#FFFFFF' };
+    }
+    return { bg: '#EBF4FC', icon: 'information-circle-outline', iconColor: '#2A7AB6', text: 'Log in and open the evaluation page to start scanning.', textColor: '#2A7AB6' };
+  }, [scanState, scanError, canScan]);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
+      {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
-          <View>
-            <Text style={styles.headerTitle}>Evaluation Viewer</Text>
-            <Text style={styles.headerSubtitle}>Scan your PSU evaluation results</Text>
-          </View>
-        </View>
+        <View style={styles.decOrb} />
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
+        </TouchableOpacity>
+        <Text style={styles.headerLabel}>ADVISING</Text>
+        <Text style={styles.headerTitle}>Evaluation Viewer</Text>
+        <Text style={styles.headerSubtitle}>Scan your PSU evaluation results</Text>
       </View>
 
-      <View style={contentStyle}>
-        <View style={styles.tipCard}>
-          <Ionicons name="information-circle-outline" size={18} color="#2A7AB6" />
-          <Text style={styles.tipText}>
-            Log in, open the evaluation page, then tap Scan. Blue rows are treated as completed.
-          </Text>
+      <View style={styles.content}>
+        {/* Status banner */}
+        <View style={[styles.statusBanner, { backgroundColor: bannerConfig.bg }]}>
+          {bannerConfig.spinning ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Ionicons name={bannerConfig.icon} size={16} color={bannerConfig.iconColor} />
+          )}
+
+          {bannerConfig.done ? (
+            <View style={styles.statusChipRow}>
+              <View style={[styles.statusChip, { backgroundColor: 'rgba(255,255,255,0.12)' }]}>
+                <Text style={[styles.statusChipText, { color: '#FFFFFF' }]}>{summary.total} subjects</Text>
+              </View>
+              <View style={[styles.statusChip, { backgroundColor: '#2A7AB6' }]}>
+                <Text style={[styles.statusChipText, { color: '#FFFFFF' }]}>✓ {summary.completed} completed</Text>
+              </View>
+              <View style={[styles.statusChip, { backgroundColor: 'rgba(255,255,255,0.12)' }]}>
+                <Text style={[styles.statusChipText, { color: 'rgba(255,255,255,0.8)' }]}>{notCompleted} remaining</Text>
+              </View>
+            </View>
+          ) : (
+            <Text style={[styles.statusBannerText, { color: bannerConfig.textColor }]}>
+              {bannerConfig.text}
+            </Text>
+          )}
         </View>
 
-        <View style={styles.statusCard}>
-          <Ionicons name="clipboard-outline" size={18} color="#2A7AB6" />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.statusText}>{statusText}</Text>
-            {statusMeta ? <Text style={styles.statusMeta}>{statusMeta}</Text> : null}
-          </View>
-        </View>
-
-        <View style={webWrapStyle}>
+        {/* WebView — stops above the floating tab bar */}
+        <View style={[styles.webWrap, { marginBottom: insets.bottom + 86 }]}>
           <WebView
             ref={webViewRef}
             source={{ uri: EVALUATION_URL }}
@@ -140,9 +142,20 @@ export default function EvaluationViewer() {
             thirdPartyCookiesEnabled
           />
 
-          <View style={actionWrapStyle}>
+          {/* Floating buttons inside WebView, above the tab bar */}
+          <View style={[styles.actionWrap, { bottom: 14 }]}>
+            {scanState === 'done' && (
+              <TouchableOpacity
+                style={styles.backPlanButton}
+                onPress={() => navigation.goBack()}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="checkmark-done-outline" size={16} color="#FFFFFF" />
+                <Text style={styles.backPlanText}>Done</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
-              style={[styles.scanButton, !canScan && styles.scanButtonDisabled]}
+              style={[styles.scanButton, (!canScan || scanState === 'scanning') && styles.scanButtonDisabled]}
               onPress={handleScan}
               disabled={!canScan || scanState === 'scanning'}
               activeOpacity={0.8}
@@ -152,8 +165,8 @@ export default function EvaluationViewer() {
               ) : (
                 <Ionicons name="scan-outline" size={18} color="#FFFFFF" />
               )}
-              <Text style={[styles.scanText, !canScan && styles.scanTextDisabled]}>
-                {scanState === 'scanning' ? 'Scanning...' : 'Scan'}
+              <Text style={[styles.scanText, (!canScan || scanState === 'scanning') && styles.scanTextDisabled]}>
+                {scanState === 'scanning' ? 'Scanning…' : scanState === 'done' ? 'Scan again' : 'Scan'}
               </Text>
             </TouchableOpacity>
           </View>

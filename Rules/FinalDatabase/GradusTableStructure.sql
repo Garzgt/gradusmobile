@@ -1,30 +1,64 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
-CREATE TABLE public._super_admin_recovery_backup (
-  email text NOT NULL,
-  full_name text,
-  app_role text,
-  is_active boolean,
-  title text,
-  backup_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT _super_admin_recovery_backup_pkey PRIMARY KEY (email)
-);
-CREATE TABLE public.academic_honors (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  student_id uuid NOT NULL,
-  term_id uuid NOT NULL,
-  honor_type text NOT NULL CHECK (honor_type = ANY (ARRAY['presidents_list'::text, 'deans_list'::text])),
-  gwa numeric NOT NULL,
-  certificate_url text,
-  awarded_by uuid,
-  awarded_at timestamp with time zone NOT NULL DEFAULT now(),
+CREATE TABLE public.profiles (
+  user_id uuid NOT NULL,
+  email text NOT NULL UNIQUE CHECK (lower(email) ~ '^[a-z0-9._%+-]+@(pampangastateu\.edu\.ph|gmail\.com)$'::text),
+  full_name text NOT NULL,
+  app_role USER-DEFINED NOT NULL,
+  avatar_url text,
+  is_active boolean NOT NULL DEFAULT true,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT academic_honors_pkey PRIMARY KEY (id),
-  CONSTRAINT academic_honors_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id),
-  CONSTRAINT academic_honors_term_id_fkey FOREIGN KEY (term_id) REFERENCES public.academic_terms(id),
-  CONSTRAINT academic_honors_awarded_by_fkey FOREIGN KEY (awarded_by) REFERENCES public.profiles(user_id)
+  CONSTRAINT profiles_pkey PRIMARY KEY (user_id),
+  CONSTRAINT profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.programs (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  code text NOT NULL UNIQUE,
+  name text NOT NULL UNIQUE,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  logo_url text,
+  CONSTRAINT programs_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.teachers (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid UNIQUE,
+  employee_no text UNIQUE,
+  first_name text NOT NULL,
+  middle_name text,
+  last_name text NOT NULL,
+  employment_type USER-DEFINED NOT NULL DEFAULT 'full_time'::employment_type,
+  max_teaching_days integer NOT NULL DEFAULT 6 CHECK (max_teaching_days >= 1 AND max_teaching_days <= 6),
+  max_load_units numeric NOT NULL DEFAULT 24,
+  department_tags ARRAY NOT NULL DEFAULT '{}'::text[],
+  avatar_url text,
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT teachers_pkey PRIMARY KEY (id),
+  CONSTRAINT teachers_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(user_id)
+);
+CREATE TABLE public.students (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid UNIQUE,
+  student_number text NOT NULL UNIQUE,
+  email text UNIQUE CHECK (lower(email) ~ '^[a-z0-9._%+-]+@(pampangastateu\.edu\.ph|gmail\.com)$'::text),
+  first_name text NOT NULL,
+  middle_name text,
+  last_name text NOT NULL,
+  contact_number text,
+  program_id uuid NOT NULL,
+  current_year_level integer CHECK (current_year_level >= 1 AND current_year_level <= 4),
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  sex text CHECK (sex IS NULL OR (sex = ANY (ARRAY['F'::text, 'M'::text]))),
+  import_source text NOT NULL DEFAULT 'self_registered'::text CHECK (import_source = ANY (ARRAY['self_registered'::text, 'classlist_import'::text, 'manual_add'::text])),
+  CONSTRAINT students_pkey PRIMARY KEY (id),
+  CONSTRAINT students_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(user_id),
+  CONSTRAINT students_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id)
 );
 CREATE TABLE public.academic_terms (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -40,30 +74,221 @@ CREATE TABLE public.academic_terms (
   CONSTRAINT academic_terms_pkey PRIMARY KEY (id),
   CONSTRAINT academic_terms_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(user_id)
 );
-CREATE TABLE public.admin_audit_logs (
+CREATE TABLE public.curriculum_versions (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  event text NOT NULL,
-  user_id uuid,
-  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT admin_audit_logs_pkey PRIMARY KEY (id),
-  CONSTRAINT admin_audit_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
-);
-CREATE TABLE public.advising_plans (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  student_id uuid NOT NULL,
-  term_id uuid NOT NULL,
-  selected_offerings jsonb NOT NULL DEFAULT '[]'::jsonb,
-  has_conflicts boolean NOT NULL DEFAULT false,
-  form_generated_at timestamp with time zone,
-  form_url text,
-  status text NOT NULL DEFAULT 'draft'::text CHECK (status = ANY (ARRAY['draft'::text, 'form_generated'::text, 'submitted'::text])),
+  program_id uuid NOT NULL,
+  name text NOT NULL,
+  effective_from_term_id uuid,
+  is_active boolean NOT NULL DEFAULT true,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  conflict_details jsonb NOT NULL DEFAULT '[]'::jsonb,
-  CONSTRAINT advising_plans_pkey PRIMARY KEY (id),
-  CONSTRAINT advising_plans_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id),
-  CONSTRAINT advising_plans_term_id_fkey FOREIGN KEY (term_id) REFERENCES public.academic_terms(id)
+  CONSTRAINT curriculum_versions_pkey PRIMARY KEY (id),
+  CONSTRAINT curriculum_versions_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id),
+  CONSTRAINT curriculum_versions_effective_from_term_id_fkey FOREIGN KEY (effective_from_term_id) REFERENCES public.academic_terms(id)
+);
+CREATE TABLE public.subjects (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  curriculum_version_id uuid NOT NULL,
+  program_id uuid NOT NULL,
+  subject_code text NOT NULL,
+  normalized_subject_code text NOT NULL,
+  title text NOT NULL,
+  year_level integer NOT NULL CHECK (year_level >= 1 AND year_level <= 4),
+  semester smallint NOT NULL CHECK (semester = ANY (ARRAY[1, 2])),
+  lec_units numeric NOT NULL DEFAULT 0,
+  lab_units numeric NOT NULL DEFAULT 0,
+  credit_units numeric NOT NULL,
+  subject_type USER-DEFINED NOT NULL,
+  delivery_pattern USER-DEFINED NOT NULL,
+  required_venue_type USER-DEFINED,
+  required_venue_subtype text,
+  color_hex text DEFAULT '#3b82f6'::text CHECK (color_hex ~ '^#[0-9A-Fa-f]{6}$'::text),
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT subjects_pkey PRIMARY KEY (id),
+  CONSTRAINT subjects_curriculum_version_id_fkey FOREIGN KEY (curriculum_version_id) REFERENCES public.curriculum_versions(id),
+  CONSTRAINT subjects_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id)
+);
+CREATE TABLE public.subject_prerequisites (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  subject_id uuid NOT NULL,
+  prerequisite_subject_id uuid NOT NULL,
+  minimum_grade numeric,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT subject_prerequisites_pkey PRIMARY KEY (id),
+  CONSTRAINT subject_prerequisites_subject_id_fkey FOREIGN KEY (subject_id) REFERENCES public.subjects(id),
+  CONSTRAINT subject_prerequisites_prerequisite_subject_id_fkey FOREIGN KEY (prerequisite_subject_id) REFERENCES public.subjects(id)
+);
+CREATE TABLE public.sections (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  term_id uuid NOT NULL,
+  program_id uuid NOT NULL,
+  curriculum_version_id uuid NOT NULL,
+  section_code text NOT NULL,
+  year_level integer NOT NULL CHECK (year_level >= 1 AND year_level <= 4),
+  semester smallint NOT NULL CHECK (semester = ANY (ARRAY[1, 2])),
+  capacity integer NOT NULL DEFAULT 40 CHECK (capacity > 0),
+  enrolled_count integer NOT NULL DEFAULT 0 CHECK (enrolled_count >= 0),
+  saturday_blocked boolean NOT NULL DEFAULT false,
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT sections_pkey PRIMARY KEY (id),
+  CONSTRAINT sections_term_id_fkey FOREIGN KEY (term_id) REFERENCES public.academic_terms(id),
+  CONSTRAINT sections_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id),
+  CONSTRAINT sections_curriculum_version_id_fkey FOREIGN KEY (curriculum_version_id) REFERENCES public.curriculum_versions(id)
+);
+CREATE TABLE public.venues (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  name text NOT NULL UNIQUE,
+  venue_type USER-DEFINED NOT NULL,
+  venue_subtype text,
+  capacity integer CHECK (capacity IS NULL OR capacity > 0),
+  is_active boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT venues_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.venue_program_restrictions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  venue_id uuid NOT NULL,
+  program_id uuid NOT NULL,
+  is_allowed boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT venue_program_restrictions_pkey PRIMARY KEY (id),
+  CONSTRAINT venue_program_restrictions_venue_id_fkey FOREIGN KEY (venue_id) REFERENCES public.venues(id),
+  CONSTRAINT venue_program_restrictions_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id)
+);
+CREATE TABLE public.teacher_availability (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  teacher_id uuid NOT NULL,
+  term_id uuid NOT NULL,
+  day_of_week smallint NOT NULL CHECK (day_of_week >= 1 AND day_of_week <= 6),
+  start_time time without time zone NOT NULL,
+  end_time time without time zone NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT teacher_availability_pkey PRIMARY KEY (id),
+  CONSTRAINT teacher_availability_teacher_id_fkey FOREIGN KEY (teacher_id) REFERENCES public.teachers(id),
+  CONSTRAINT teacher_availability_term_id_fkey FOREIGN KEY (term_id) REFERENCES public.academic_terms(id)
+);
+CREATE TABLE public.teacher_subject_assignments (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  teacher_id uuid NOT NULL,
+  subject_id uuid NOT NULL,
+  term_id uuid NOT NULL,
+  program_id uuid,
+  assigned_by uuid,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT teacher_subject_assignments_pkey PRIMARY KEY (id),
+  CONSTRAINT teacher_subject_assignments_teacher_id_fkey FOREIGN KEY (teacher_id) REFERENCES public.teachers(id),
+  CONSTRAINT teacher_subject_assignments_subject_id_fkey FOREIGN KEY (subject_id) REFERENCES public.subjects(id),
+  CONSTRAINT teacher_subject_assignments_term_id_fkey FOREIGN KEY (term_id) REFERENCES public.academic_terms(id),
+  CONSTRAINT teacher_subject_assignments_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id),
+  CONSTRAINT teacher_subject_assignments_assigned_by_fkey FOREIGN KEY (assigned_by) REFERENCES public.profiles(user_id)
+);
+CREATE TABLE public.schedule_generation_logs (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  term_id uuid NOT NULL,
+  program_id uuid,
+  scope USER-DEFINED NOT NULL,
+  regeneration_mode USER-DEFINED NOT NULL,
+  strategy text NOT NULL DEFAULT 'auto_best'::text,
+  status USER-DEFINED NOT NULL DEFAULT 'pending'::job_status,
+  started_by uuid,
+  started_at timestamp with time zone,
+  finished_at timestamp with time zone,
+  summary jsonb NOT NULL DEFAULT '{}'::jsonb,
+  notes text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT schedule_generation_logs_pkey PRIMARY KEY (id),
+  CONSTRAINT schedule_generation_logs_term_id_fkey FOREIGN KEY (term_id) REFERENCES public.academic_terms(id),
+  CONSTRAINT schedule_generation_logs_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id),
+  CONSTRAINT schedule_generation_logs_started_by_fkey FOREIGN KEY (started_by) REFERENCES public.profiles(user_id)
+);
+CREATE TABLE public.schedule_publications (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  term_id uuid NOT NULL,
+  program_id uuid,
+  version_no integer NOT NULL DEFAULT 1,
+  status USER-DEFINED NOT NULL DEFAULT 'draft'::schedule_status,
+  published_by uuid,
+  published_at timestamp with time zone,
+  notes text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT schedule_publications_pkey PRIMARY KEY (id),
+  CONSTRAINT schedule_publications_term_id_fkey FOREIGN KEY (term_id) REFERENCES public.academic_terms(id),
+  CONSTRAINT schedule_publications_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id),
+  CONSTRAINT schedule_publications_published_by_fkey FOREIGN KEY (published_by) REFERENCES public.profiles(user_id)
+);
+CREATE TABLE public.schedule_entries (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  term_id uuid NOT NULL,
+  program_id uuid NOT NULL,
+  curriculum_version_id uuid,
+  section_id uuid NOT NULL,
+  subject_id uuid NOT NULL,
+  teacher_id uuid,
+  venue_id uuid,
+  generation_log_id uuid,
+  publication_id uuid,
+  day_of_week smallint NOT NULL CHECK (day_of_week >= 1 AND day_of_week <= 6),
+  start_time time without time zone NOT NULL,
+  end_time time without time zone NOT NULL,
+  duration_minutes integer DEFAULT ((EXTRACT(epoch FROM (end_time - start_time)) / (60)::numeric))::integer,
+  session_type text,
+  schedule_status USER-DEFINED NOT NULL DEFAULT 'draft'::schedule_status,
+  is_manual boolean NOT NULL DEFAULT false,
+  conflict_flag boolean NOT NULL DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT schedule_entries_pkey PRIMARY KEY (id),
+  CONSTRAINT schedule_entries_term_id_fkey FOREIGN KEY (term_id) REFERENCES public.academic_terms(id),
+  CONSTRAINT schedule_entries_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id),
+  CONSTRAINT schedule_entries_curriculum_version_id_fkey FOREIGN KEY (curriculum_version_id) REFERENCES public.curriculum_versions(id),
+  CONSTRAINT schedule_entries_section_id_fkey FOREIGN KEY (section_id) REFERENCES public.sections(id),
+  CONSTRAINT schedule_entries_subject_id_fkey FOREIGN KEY (subject_id) REFERENCES public.subjects(id),
+  CONSTRAINT schedule_entries_teacher_id_fkey FOREIGN KEY (teacher_id) REFERENCES public.teachers(id),
+  CONSTRAINT schedule_entries_venue_id_fkey FOREIGN KEY (venue_id) REFERENCES public.venues(id),
+  CONSTRAINT schedule_entries_generation_log_id_fkey FOREIGN KEY (generation_log_id) REFERENCES public.schedule_generation_logs(id),
+  CONSTRAINT schedule_entries_publication_id_fkey FOREIGN KEY (publication_id) REFERENCES public.schedule_publications(id)
+);
+CREATE TABLE public.schedule_conflicts (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  term_id uuid NOT NULL,
+  program_id uuid,
+  generation_log_id uuid,
+  schedule_entry_id uuid,
+  conflict_type USER-DEFINED NOT NULL,
+  severity smallint NOT NULL DEFAULT 3 CHECK (severity >= 1 AND severity <= 5),
+  description text NOT NULL,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  is_resolved boolean NOT NULL DEFAULT false,
+  resolved_by uuid,
+  resolved_at timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT schedule_conflicts_pkey PRIMARY KEY (id),
+  CONSTRAINT schedule_conflicts_term_id_fkey FOREIGN KEY (term_id) REFERENCES public.academic_terms(id),
+  CONSTRAINT schedule_conflicts_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id),
+  CONSTRAINT schedule_conflicts_generation_log_id_fkey FOREIGN KEY (generation_log_id) REFERENCES public.schedule_generation_logs(id),
+  CONSTRAINT schedule_conflicts_schedule_entry_id_fkey FOREIGN KEY (schedule_entry_id) REFERENCES public.schedule_entries(id),
+  CONSTRAINT schedule_conflicts_resolved_by_fkey FOREIGN KEY (resolved_by) REFERENCES public.profiles(user_id)
+);
+CREATE TABLE public.schedule_publication_items (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  publication_id uuid NOT NULL,
+  schedule_entry_id uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT schedule_publication_items_pkey PRIMARY KEY (id),
+  CONSTRAINT schedule_publication_items_publication_id_fkey FOREIGN KEY (publication_id) REFERENCES public.schedule_publications(id),
+  CONSTRAINT schedule_publication_items_schedule_entry_id_fkey FOREIGN KEY (schedule_entry_id) REFERENCES public.schedule_entries(id)
 );
 CREATE TABLE public.class_offerings (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -82,51 +307,49 @@ CREATE TABLE public.class_offerings (
   CONSTRAINT class_offerings_subject_id_fkey FOREIGN KEY (subject_id) REFERENCES public.subjects(id),
   CONSTRAINT class_offerings_teacher_id_fkey FOREIGN KEY (teacher_id) REFERENCES public.teachers(id)
 );
-CREATE TABLE public.class_students (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
+CREATE TABLE public.grade_sheet_settings (
   class_offering_id uuid NOT NULL,
-  student_id uuid NOT NULL,
-  source text NOT NULL DEFAULT 'classlist_import'::text CHECK (source = ANY (ARRAY['classlist_import'::text, 'manual_add'::text])),
-  import_batch_id uuid,
-  is_active boolean NOT NULL DEFAULT true,
-  removed_at timestamp with time zone,
-  remove_reason text,
-  added_at timestamp with time zone NOT NULL DEFAULT now(),
+  semester smallint CHECK (semester = ANY (ARRAY[1, 2])),
+  academic_year text,
+  subject_code text,
+  subject_description text,
+  class_section text,
+  class_type USER-DEFINED NOT NULL DEFAULT 'non_lab'::class_type,
+  weight_attendance numeric NOT NULL DEFAULT 0,
+  weight_quizzes numeric NOT NULL DEFAULT 0,
+  weight_activities numeric NOT NULL DEFAULT 0,
+  weight_recitation numeric NOT NULL DEFAULT 0,
+  weight_laboratory numeric NOT NULL DEFAULT 0,
+  weight_major_exam numeric NOT NULL DEFAULT 0,
+  total_weight numeric DEFAULT (((((COALESCE(weight_attendance, (0)::numeric) + COALESCE(weight_quizzes, (0)::numeric)) + COALESCE(weight_activities, (0)::numeric)) + COALESCE(weight_recitation, (0)::numeric)) + COALESCE(weight_laboratory, (0)::numeric)) + COALESCE(weight_major_exam, (0)::numeric)),
+  is_locked boolean NOT NULL DEFAULT false,
+  locked_at timestamp with time zone,
+  locked_by uuid,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT class_students_pkey PRIMARY KEY (id),
-  CONSTRAINT class_students_class_offering_id_fkey FOREIGN KEY (class_offering_id) REFERENCES public.class_offerings(id),
-  CONSTRAINT class_students_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id)
-);
-CREATE TABLE public.classlist_import_logs (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  class_offering_id uuid NOT NULL,
-  imported_by uuid NOT NULL,
   portal_class_id text,
   portal_subject_code text,
-  file_name text NOT NULL,
-  student_count integer NOT NULL DEFAULT 0,
-  new_count integer NOT NULL DEFAULT 0,
-  updated_count integer NOT NULL DEFAULT 0,
-  skipped_count integer NOT NULL DEFAULT 0,
-  imported_at timestamp with time zone NOT NULL DEFAULT now(),
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  import_batch_id uuid,
-  CONSTRAINT classlist_import_logs_pkey PRIMARY KEY (id),
-  CONSTRAINT classlist_import_logs_class_offering_id_fkey FOREIGN KEY (class_offering_id) REFERENCES public.class_offerings(id),
-  CONSTRAINT classlist_import_logs_imported_by_fkey FOREIGN KEY (imported_by) REFERENCES public.profiles(user_id)
-);
-CREATE TABLE public.curriculum_versions (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  program_id uuid NOT NULL,
-  name text NOT NULL,
-  effective_from_term_id uuid,
-  is_active boolean NOT NULL DEFAULT true,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT curriculum_versions_pkey PRIMARY KEY (id),
-  CONSTRAINT curriculum_versions_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id),
-  CONSTRAINT curriculum_versions_effective_from_term_id_fkey FOREIGN KEY (effective_from_term_id) REFERENCES public.academic_terms(id)
+  exam_date_midterm date,
+  exam_date_final date,
+  total_meetings_midterm integer NOT NULL DEFAULT 0 CHECK (total_meetings_midterm >= 0),
+  total_meetings_final integer NOT NULL DEFAULT 0 CHECK (total_meetings_final >= 0),
+  q1_max numeric NOT NULL DEFAULT 0,
+  q2_max numeric NOT NULL DEFAULT 0,
+  q3_max numeric NOT NULL DEFAULT 0,
+  q4_max numeric NOT NULL DEFAULT 0,
+  q5_max numeric NOT NULL DEFAULT 0,
+  a1_max numeric NOT NULL DEFAULT 0,
+  a2_max numeric NOT NULL DEFAULT 0,
+  a3_max numeric NOT NULL DEFAULT 0,
+  a4_max numeric NOT NULL DEFAULT 0,
+  a5_max numeric NOT NULL DEFAULT 0,
+  recitation_max numeric NOT NULL DEFAULT 100,
+  lab_max numeric NOT NULL DEFAULT 30,
+  exam_max numeric NOT NULL DEFAULT 100,
+  transmutation_base integer NOT NULL DEFAULT 50,
+  CONSTRAINT grade_sheet_settings_pkey PRIMARY KEY (class_offering_id),
+  CONSTRAINT grade_sheet_settings_class_offering_id_fkey FOREIGN KEY (class_offering_id) REFERENCES public.class_offerings(id),
+  CONSTRAINT grade_sheet_settings_locked_by_fkey FOREIGN KEY (locked_by) REFERENCES public.profiles(user_id)
 );
 CREATE TABLE public.grade_attendance_entries (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -143,22 +366,6 @@ CREATE TABLE public.grade_attendance_entries (
   CONSTRAINT grade_attendance_entries_class_offering_id_fkey FOREIGN KEY (class_offering_id) REFERENCES public.class_offerings(id),
   CONSTRAINT grade_attendance_entries_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id),
   CONSTRAINT grade_attendance_entries_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.profiles(user_id)
-);
-CREATE TABLE public.grade_audit_logs (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  class_offering_id uuid,
-  student_id uuid,
-  actor_id uuid NOT NULL,
-  actor_role USER-DEFINED NOT NULL,
-  action_type text NOT NULL,
-  before_value jsonb,
-  after_value jsonb,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT grade_audit_logs_pkey PRIMARY KEY (id),
-  CONSTRAINT grade_audit_logs_class_offering_id_fkey FOREIGN KEY (class_offering_id) REFERENCES public.class_offerings(id),
-  CONSTRAINT grade_audit_logs_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id),
-  CONSTRAINT grade_audit_logs_actor_id_fkey FOREIGN KEY (actor_id) REFERENCES public.profiles(user_id)
 );
 CREATE TABLE public.grade_components (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -205,83 +412,6 @@ CREATE TABLE public.grade_components (
   CONSTRAINT grade_components_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id),
   CONSTRAINT grade_components_posted_by_fkey FOREIGN KEY (posted_by) REFERENCES public.profiles(user_id)
 );
-CREATE TABLE public.grade_export_logs (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  class_offering_id uuid NOT NULL,
-  export_type text NOT NULL CHECK (export_type = ANY (ARRAY['midterm'::text, 'final'::text])),
-  exported_by uuid NOT NULL,
-  file_name text NOT NULL,
-  student_count integer NOT NULL DEFAULT 0,
-  exported_at timestamp with time zone NOT NULL DEFAULT now(),
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT grade_export_logs_pkey PRIMARY KEY (id),
-  CONSTRAINT grade_export_logs_class_offering_id_fkey FOREIGN KEY (class_offering_id) REFERENCES public.class_offerings(id),
-  CONSTRAINT grade_export_logs_exported_by_fkey FOREIGN KEY (exported_by) REFERENCES public.profiles(user_id)
-);
-CREATE TABLE public.grade_period_settings (
-  class_offering_id uuid NOT NULL,
-  period text NOT NULL CHECK (period = ANY (ARRAY['midterm'::text, 'final'::text])),
-  q1_max numeric NOT NULL DEFAULT 0,
-  q2_max numeric NOT NULL DEFAULT 0,
-  q3_max numeric NOT NULL DEFAULT 0,
-  q4_max numeric NOT NULL DEFAULT 0,
-  q5_max numeric NOT NULL DEFAULT 0,
-  a1_max numeric NOT NULL DEFAULT 0,
-  a2_max numeric NOT NULL DEFAULT 0,
-  a3_max numeric NOT NULL DEFAULT 0,
-  a4_max numeric NOT NULL DEFAULT 0,
-  a5_max numeric NOT NULL DEFAULT 0,
-  recitation_max numeric NOT NULL DEFAULT 100,
-  lab_max numeric NOT NULL DEFAULT 30,
-  exam_max numeric NOT NULL DEFAULT 100,
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT grade_period_settings_pkey PRIMARY KEY (class_offering_id, period),
-  CONSTRAINT grade_period_settings_class_offering_id_fkey FOREIGN KEY (class_offering_id) REFERENCES public.class_offerings(id)
-);
-CREATE TABLE public.grade_sheet_settings (
-  class_offering_id uuid NOT NULL,
-  semester smallint CHECK (semester = ANY (ARRAY[1, 2])),
-  academic_year text,
-  subject_code text,
-  subject_description text,
-  class_section text,
-  class_type USER-DEFINED NOT NULL DEFAULT 'non_lab'::class_type,
-  weight_attendance numeric NOT NULL DEFAULT 0,
-  weight_quizzes numeric NOT NULL DEFAULT 0,
-  weight_activities numeric NOT NULL DEFAULT 0,
-  weight_recitation numeric NOT NULL DEFAULT 0,
-  weight_laboratory numeric NOT NULL DEFAULT 0,
-  weight_major_exam numeric NOT NULL DEFAULT 0,
-  total_weight numeric DEFAULT (((((COALESCE(weight_attendance, (0)::numeric) + COALESCE(weight_quizzes, (0)::numeric)) + COALESCE(weight_activities, (0)::numeric)) + COALESCE(weight_recitation, (0)::numeric)) + COALESCE(weight_laboratory, (0)::numeric)) + COALESCE(weight_major_exam, (0)::numeric)),
-  is_locked boolean NOT NULL DEFAULT false,
-  locked_at timestamp with time zone,
-  locked_by uuid,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  portal_class_id text,
-  portal_subject_code text,
-  exam_date_midterm date,
-  exam_date_final date,
-  total_meetings_midterm integer NOT NULL DEFAULT 0 CHECK (total_meetings_midterm >= 0),
-  total_meetings_final integer NOT NULL DEFAULT 0 CHECK (total_meetings_final >= 0),
-  q1_max numeric NOT NULL DEFAULT 0,
-  q2_max numeric NOT NULL DEFAULT 0,
-  q3_max numeric NOT NULL DEFAULT 0,
-  q4_max numeric NOT NULL DEFAULT 0,
-  q5_max numeric NOT NULL DEFAULT 0,
-  a1_max numeric NOT NULL DEFAULT 0,
-  a2_max numeric NOT NULL DEFAULT 0,
-  a3_max numeric NOT NULL DEFAULT 0,
-  a4_max numeric NOT NULL DEFAULT 0,
-  a5_max numeric NOT NULL DEFAULT 0,
-  recitation_max numeric NOT NULL DEFAULT 100,
-  lab_max numeric NOT NULL DEFAULT 30,
-  exam_max numeric NOT NULL DEFAULT 100,
-  transmutation_base integer NOT NULL DEFAULT 50,
-  CONSTRAINT grade_sheet_settings_pkey PRIMARY KEY (class_offering_id),
-  CONSTRAINT grade_sheet_settings_class_offering_id_fkey FOREIGN KEY (class_offering_id) REFERENCES public.class_offerings(id),
-  CONSTRAINT grade_sheet_settings_locked_by_fkey FOREIGN KEY (locked_by) REFERENCES public.profiles(user_id)
-);
 CREATE TABLE public.grades (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   class_offering_id uuid NOT NULL,
@@ -304,22 +434,37 @@ CREATE TABLE public.grades (
   CONSTRAINT grades_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id),
   CONSTRAINT grades_posted_by_fkey FOREIGN KEY (posted_by) REFERENCES public.profiles(user_id)
 );
-CREATE TABLE public.media_uploads (
+CREATE TABLE public.grade_audit_logs (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  owner_user_id uuid NOT NULL,
-  related_table text,
-  related_id uuid,
-  bucket_id text NOT NULL,
-  object_path text NOT NULL UNIQUE,
-  mime_type text,
-  size_bytes bigint CHECK (size_bytes IS NULL OR size_bytes >= 0),
-  width integer,
-  height integer,
-  is_public boolean NOT NULL DEFAULT false,
+  class_offering_id uuid,
+  student_id uuid,
+  actor_id uuid NOT NULL,
+  actor_role USER-DEFINED NOT NULL,
+  action_type text NOT NULL,
+  before_value jsonb,
+  after_value jsonb,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT media_uploads_pkey PRIMARY KEY (id),
-  CONSTRAINT media_uploads_owner_user_id_fkey FOREIGN KEY (owner_user_id) REFERENCES public.profiles(user_id)
+  CONSTRAINT grade_audit_logs_pkey PRIMARY KEY (id),
+  CONSTRAINT grade_audit_logs_class_offering_id_fkey FOREIGN KEY (class_offering_id) REFERENCES public.class_offerings(id),
+  CONSTRAINT grade_audit_logs_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id),
+  CONSTRAINT grade_audit_logs_actor_id_fkey FOREIGN KEY (actor_id) REFERENCES public.profiles(user_id)
+);
+CREATE TABLE public.academic_honors (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  student_id uuid NOT NULL,
+  term_id uuid NOT NULL,
+  honor_type text NOT NULL CHECK (honor_type = ANY (ARRAY['presidents_list'::text, 'deans_list'::text])),
+  gwa numeric NOT NULL,
+  certificate_url text,
+  awarded_by uuid,
+  awarded_at timestamp with time zone NOT NULL DEFAULT now(),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT academic_honors_pkey PRIMARY KEY (id),
+  CONSTRAINT academic_honors_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id),
+  CONSTRAINT academic_honors_term_id_fkey FOREIGN KEY (term_id) REFERENCES public.academic_terms(id),
+  CONSTRAINT academic_honors_awarded_by_fkey FOREIGN KEY (awarded_by) REFERENCES public.profiles(user_id)
 );
 CREATE TABLE public.notifications (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -339,6 +484,23 @@ CREATE TABLE public.notifications (
   CONSTRAINT notifications_recipient_user_id_fkey FOREIGN KEY (recipient_user_id) REFERENCES public.profiles(user_id),
   CONSTRAINT notifications_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id)
 );
+CREATE TABLE public.media_uploads (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  owner_user_id uuid NOT NULL,
+  related_table text,
+  related_id uuid,
+  bucket_id text NOT NULL,
+  object_path text NOT NULL UNIQUE,
+  mime_type text,
+  size_bytes bigint CHECK (size_bytes IS NULL OR size_bytes >= 0),
+  width integer,
+  height integer,
+  is_public boolean NOT NULL DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT media_uploads_pkey PRIMARY KEY (id),
+  CONSTRAINT media_uploads_owner_user_id_fkey FOREIGN KEY (owner_user_id) REFERENCES public.profiles(user_id)
+);
 CREATE TABLE public.password_reset_tokens (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL,
@@ -349,266 +511,104 @@ CREATE TABLE public.password_reset_tokens (
   CONSTRAINT password_reset_tokens_pkey PRIMARY KEY (id),
   CONSTRAINT password_reset_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
-CREATE TABLE public.profiles (
-  user_id uuid NOT NULL,
-  email text NOT NULL UNIQUE CHECK (lower(email) ~ '^[a-z0-9._%+-]+@(pampangastateu\.edu\.ph|gmail\.com)$'::text),
-  full_name text NOT NULL,
-  app_role USER-DEFINED NOT NULL,
-  avatar_url text,
-  is_active boolean NOT NULL DEFAULT true,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT profiles_pkey PRIMARY KEY (user_id),
-  CONSTRAINT profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
-);
-CREATE TABLE public.programs (
+CREATE TABLE public.admin_audit_logs (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  code text NOT NULL UNIQUE,
-  name text NOT NULL UNIQUE,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  logo_url text,
-  CONSTRAINT programs_pkey PRIMARY KEY (id)
-);
-CREATE TABLE public.schedule_conflicts (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  term_id uuid NOT NULL,
-  program_id uuid,
-  generation_log_id uuid,
-  schedule_entry_id uuid,
-  conflict_type USER-DEFINED NOT NULL,
-  severity smallint NOT NULL DEFAULT 3 CHECK (severity >= 1 AND severity <= 5),
-  description text NOT NULL,
+  event text NOT NULL,
+  user_id uuid,
   metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
-  is_resolved boolean NOT NULL DEFAULT false,
-  resolved_by uuid,
-  resolved_at timestamp with time zone,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT schedule_conflicts_pkey PRIMARY KEY (id),
-  CONSTRAINT schedule_conflicts_term_id_fkey FOREIGN KEY (term_id) REFERENCES public.academic_terms(id),
-  CONSTRAINT schedule_conflicts_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id),
-  CONSTRAINT schedule_conflicts_generation_log_id_fkey FOREIGN KEY (generation_log_id) REFERENCES public.schedule_generation_logs(id),
-  CONSTRAINT schedule_conflicts_schedule_entry_id_fkey FOREIGN KEY (schedule_entry_id) REFERENCES public.schedule_entries(id),
-  CONSTRAINT schedule_conflicts_resolved_by_fkey FOREIGN KEY (resolved_by) REFERENCES public.profiles(user_id)
+  CONSTRAINT admin_audit_logs_pkey PRIMARY KEY (id),
+  CONSTRAINT admin_audit_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
-CREATE TABLE public.schedule_entries (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  term_id uuid NOT NULL,
-  program_id uuid NOT NULL,
-  curriculum_version_id uuid,
-  section_id uuid NOT NULL,
-  subject_id uuid NOT NULL,
-  teacher_id uuid,
-  venue_id uuid,
-  generation_log_id uuid,
-  publication_id uuid,
-  day_of_week smallint NOT NULL CHECK (day_of_week >= 1 AND day_of_week <= 6),
-  start_time time without time zone NOT NULL,
-  end_time time without time zone NOT NULL,
-  duration_minutes integer DEFAULT ((EXTRACT(epoch FROM (end_time - start_time)) / (60)::numeric))::integer,
-  session_type text,
-  schedule_status USER-DEFINED NOT NULL DEFAULT 'draft'::schedule_status,
-  is_manual boolean NOT NULL DEFAULT false,
-  conflict_flag boolean NOT NULL DEFAULT false,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT schedule_entries_pkey PRIMARY KEY (id),
-  CONSTRAINT schedule_entries_term_id_fkey FOREIGN KEY (term_id) REFERENCES public.academic_terms(id),
-  CONSTRAINT schedule_entries_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id),
-  CONSTRAINT schedule_entries_curriculum_version_id_fkey FOREIGN KEY (curriculum_version_id) REFERENCES public.curriculum_versions(id),
-  CONSTRAINT schedule_entries_section_id_fkey FOREIGN KEY (section_id) REFERENCES public.sections(id),
-  CONSTRAINT schedule_entries_subject_id_fkey FOREIGN KEY (subject_id) REFERENCES public.subjects(id),
-  CONSTRAINT schedule_entries_teacher_id_fkey FOREIGN KEY (teacher_id) REFERENCES public.teachers(id),
-  CONSTRAINT schedule_entries_venue_id_fkey FOREIGN KEY (venue_id) REFERENCES public.venues(id),
-  CONSTRAINT schedule_entries_generation_log_id_fkey FOREIGN KEY (generation_log_id) REFERENCES public.schedule_generation_logs(id),
-  CONSTRAINT schedule_entries_publication_id_fkey FOREIGN KEY (publication_id) REFERENCES public.schedule_publications(id)
+CREATE TABLE public._super_admin_recovery_backup (
+  email text NOT NULL,
+  full_name text,
+  app_role text,
+  is_active boolean,
+  title text,
+  backup_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT _super_admin_recovery_backup_pkey PRIMARY KEY (email)
 );
-CREATE TABLE public.schedule_generation_logs (
+CREATE TABLE public.class_students (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  term_id uuid NOT NULL,
-  program_id uuid,
-  scope USER-DEFINED NOT NULL,
-  regeneration_mode USER-DEFINED NOT NULL,
-  strategy text NOT NULL DEFAULT 'auto_best'::text,
-  status USER-DEFINED NOT NULL DEFAULT 'pending'::job_status,
-  started_by uuid,
-  started_at timestamp with time zone,
-  finished_at timestamp with time zone,
-  summary jsonb NOT NULL DEFAULT '{}'::jsonb,
-  notes text,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT schedule_generation_logs_pkey PRIMARY KEY (id),
-  CONSTRAINT schedule_generation_logs_term_id_fkey FOREIGN KEY (term_id) REFERENCES public.academic_terms(id),
-  CONSTRAINT schedule_generation_logs_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id),
-  CONSTRAINT schedule_generation_logs_started_by_fkey FOREIGN KEY (started_by) REFERENCES public.profiles(user_id)
-);
-CREATE TABLE public.schedule_publication_items (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  publication_id uuid NOT NULL,
-  schedule_entry_id uuid NOT NULL,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT schedule_publication_items_pkey PRIMARY KEY (id),
-  CONSTRAINT schedule_publication_items_publication_id_fkey FOREIGN KEY (publication_id) REFERENCES public.schedule_publications(id),
-  CONSTRAINT schedule_publication_items_schedule_entry_id_fkey FOREIGN KEY (schedule_entry_id) REFERENCES public.schedule_entries(id)
-);
-CREATE TABLE public.schedule_publications (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  term_id uuid NOT NULL,
-  program_id uuid,
-  version_no integer NOT NULL DEFAULT 1,
-  status USER-DEFINED NOT NULL DEFAULT 'draft'::schedule_status,
-  published_by uuid,
-  published_at timestamp with time zone,
-  notes text,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT schedule_publications_pkey PRIMARY KEY (id),
-  CONSTRAINT schedule_publications_term_id_fkey FOREIGN KEY (term_id) REFERENCES public.academic_terms(id),
-  CONSTRAINT schedule_publications_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id),
-  CONSTRAINT schedule_publications_published_by_fkey FOREIGN KEY (published_by) REFERENCES public.profiles(user_id)
-);
-CREATE TABLE public.sections (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  term_id uuid NOT NULL,
-  program_id uuid NOT NULL,
-  curriculum_version_id uuid NOT NULL,
-  section_code text NOT NULL,
-  year_level integer NOT NULL CHECK (year_level >= 1 AND year_level <= 4),
-  semester smallint NOT NULL CHECK (semester = ANY (ARRAY[1, 2])),
-  capacity integer NOT NULL DEFAULT 40 CHECK (capacity > 0),
-  enrolled_count integer NOT NULL DEFAULT 0 CHECK (enrolled_count >= 0),
-  saturday_blocked boolean NOT NULL DEFAULT false,
+  class_offering_id uuid NOT NULL,
+  student_id uuid NOT NULL,
+  source text NOT NULL DEFAULT 'classlist_import'::text CHECK (source = ANY (ARRAY['classlist_import'::text, 'manual_add'::text])),
+  import_batch_id uuid,
   is_active boolean NOT NULL DEFAULT true,
+  removed_at timestamp with time zone,
+  remove_reason text,
+  added_at timestamp with time zone NOT NULL DEFAULT now(),
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT sections_pkey PRIMARY KEY (id),
-  CONSTRAINT sections_term_id_fkey FOREIGN KEY (term_id) REFERENCES public.academic_terms(id),
-  CONSTRAINT sections_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id),
-  CONSTRAINT sections_curriculum_version_id_fkey FOREIGN KEY (curriculum_version_id) REFERENCES public.curriculum_versions(id)
+  CONSTRAINT class_students_pkey PRIMARY KEY (id),
+  CONSTRAINT class_students_class_offering_id_fkey FOREIGN KEY (class_offering_id) REFERENCES public.class_offerings(id),
+  CONSTRAINT class_students_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id)
 );
-CREATE TABLE public.students (
+CREATE TABLE public.classlist_import_logs (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_id uuid UNIQUE,
-  student_number text NOT NULL UNIQUE,
-  email text UNIQUE CHECK (lower(email) ~ '^[a-z0-9._%+-]+@(pampangastateu\.edu\.ph|gmail\.com)$'::text),
-  first_name text NOT NULL,
-  middle_name text,
-  last_name text NOT NULL,
-  contact_number text,
-  program_id uuid NOT NULL,
-  current_year_level integer CHECK (current_year_level >= 1 AND current_year_level <= 4),
-  is_active boolean NOT NULL DEFAULT true,
+  class_offering_id uuid NOT NULL,
+  imported_by uuid NOT NULL,
+  portal_class_id text,
+  portal_subject_code text,
+  file_name text NOT NULL,
+  student_count integer NOT NULL DEFAULT 0,
+  new_count integer NOT NULL DEFAULT 0,
+  updated_count integer NOT NULL DEFAULT 0,
+  skipped_count integer NOT NULL DEFAULT 0,
+  imported_at timestamp with time zone NOT NULL DEFAULT now(),
   created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  sex text CHECK (sex IS NULL OR (sex = ANY (ARRAY['F'::text, 'M'::text]))),
-  import_source text NOT NULL DEFAULT 'self_registered'::text CHECK (import_source = ANY (ARRAY['self_registered'::text, 'classlist_import'::text, 'manual_add'::text])),
-  CONSTRAINT students_pkey PRIMARY KEY (id),
-  CONSTRAINT students_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(user_id),
-  CONSTRAINT students_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id)
+  import_batch_id uuid,
+  CONSTRAINT classlist_import_logs_pkey PRIMARY KEY (id),
+  CONSTRAINT classlist_import_logs_class_offering_id_fkey FOREIGN KEY (class_offering_id) REFERENCES public.class_offerings(id),
+  CONSTRAINT classlist_import_logs_imported_by_fkey FOREIGN KEY (imported_by) REFERENCES public.profiles(user_id)
 );
-CREATE TABLE public.subject_prerequisites (
+CREATE TABLE public.grade_export_logs (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  subject_id uuid NOT NULL,
-  prerequisite_subject_id uuid NOT NULL,
-  minimum_grade numeric,
+  class_offering_id uuid NOT NULL,
+  export_type text NOT NULL CHECK (export_type = ANY (ARRAY['midterm'::text, 'final'::text])),
+  exported_by uuid NOT NULL,
+  file_name text NOT NULL,
+  student_count integer NOT NULL DEFAULT 0,
+  exported_at timestamp with time zone NOT NULL DEFAULT now(),
   created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT subject_prerequisites_pkey PRIMARY KEY (id),
-  CONSTRAINT subject_prerequisites_subject_id_fkey FOREIGN KEY (subject_id) REFERENCES public.subjects(id),
-  CONSTRAINT subject_prerequisites_prerequisite_subject_id_fkey FOREIGN KEY (prerequisite_subject_id) REFERENCES public.subjects(id)
+  CONSTRAINT grade_export_logs_pkey PRIMARY KEY (id),
+  CONSTRAINT grade_export_logs_class_offering_id_fkey FOREIGN KEY (class_offering_id) REFERENCES public.class_offerings(id),
+  CONSTRAINT grade_export_logs_exported_by_fkey FOREIGN KEY (exported_by) REFERENCES public.profiles(user_id)
 );
-CREATE TABLE public.subjects (
+CREATE TABLE public.advising_plans (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  curriculum_version_id uuid NOT NULL,
-  program_id uuid NOT NULL,
-  subject_code text NOT NULL,
-  normalized_subject_code text NOT NULL,
-  title text NOT NULL,
-  year_level integer NOT NULL CHECK (year_level >= 1 AND year_level <= 4),
-  semester smallint NOT NULL CHECK (semester = ANY (ARRAY[1, 2])),
-  lec_units numeric NOT NULL DEFAULT 0,
-  lab_units numeric NOT NULL DEFAULT 0,
-  credit_units numeric NOT NULL,
-  subject_type USER-DEFINED NOT NULL,
-  delivery_pattern USER-DEFINED NOT NULL,
-  required_venue_type USER-DEFINED,
-  required_venue_subtype text,
-  color_hex text DEFAULT '#3b82f6'::text CHECK (color_hex ~ '^#[0-9A-Fa-f]{6}$'::text),
-  is_active boolean NOT NULL DEFAULT true,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT subjects_pkey PRIMARY KEY (id),
-  CONSTRAINT subjects_curriculum_version_id_fkey FOREIGN KEY (curriculum_version_id) REFERENCES public.curriculum_versions(id),
-  CONSTRAINT subjects_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id)
-);
-CREATE TABLE public.teacher_availability (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  teacher_id uuid NOT NULL,
+  student_id uuid NOT NULL,
   term_id uuid NOT NULL,
-  day_of_week smallint NOT NULL CHECK (day_of_week >= 1 AND day_of_week <= 6),
-  start_time time without time zone NOT NULL,
-  end_time time without time zone NOT NULL,
+  selected_offerings jsonb NOT NULL DEFAULT '[]'::jsonb,
+  has_conflicts boolean NOT NULL DEFAULT false,
+  form_generated_at timestamp with time zone,
+  form_url text,
+  status text NOT NULL DEFAULT 'draft'::text CHECK (status = ANY (ARRAY['draft'::text, 'form_generated'::text, 'submitted'::text])),
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT teacher_availability_pkey PRIMARY KEY (id),
-  CONSTRAINT teacher_availability_teacher_id_fkey FOREIGN KEY (teacher_id) REFERENCES public.teachers(id),
-  CONSTRAINT teacher_availability_term_id_fkey FOREIGN KEY (term_id) REFERENCES public.academic_terms(id)
+  conflict_details jsonb NOT NULL DEFAULT '[]'::jsonb,
+  CONSTRAINT advising_plans_pkey PRIMARY KEY (id),
+  CONSTRAINT advising_plans_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id),
+  CONSTRAINT advising_plans_term_id_fkey FOREIGN KEY (term_id) REFERENCES public.academic_terms(id)
 );
-CREATE TABLE public.teacher_subject_assignments (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  teacher_id uuid NOT NULL,
-  subject_id uuid NOT NULL,
-  term_id uuid NOT NULL,
-  program_id uuid,
-  assigned_by uuid,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
+CREATE TABLE public.grade_period_settings (
+  class_offering_id uuid NOT NULL,
+  period text NOT NULL CHECK (period = ANY (ARRAY['midterm'::text, 'final'::text])),
+  q1_max numeric NOT NULL DEFAULT 0,
+  q2_max numeric NOT NULL DEFAULT 0,
+  q3_max numeric NOT NULL DEFAULT 0,
+  q4_max numeric NOT NULL DEFAULT 0,
+  q5_max numeric NOT NULL DEFAULT 0,
+  a1_max numeric NOT NULL DEFAULT 0,
+  a2_max numeric NOT NULL DEFAULT 0,
+  a3_max numeric NOT NULL DEFAULT 0,
+  a4_max numeric NOT NULL DEFAULT 0,
+  a5_max numeric NOT NULL DEFAULT 0,
+  recitation_max numeric NOT NULL DEFAULT 100,
+  lab_max numeric NOT NULL DEFAULT 30,
+  exam_max numeric NOT NULL DEFAULT 100,
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT teacher_subject_assignments_pkey PRIMARY KEY (id),
-  CONSTRAINT teacher_subject_assignments_teacher_id_fkey FOREIGN KEY (teacher_id) REFERENCES public.teachers(id),
-  CONSTRAINT teacher_subject_assignments_subject_id_fkey FOREIGN KEY (subject_id) REFERENCES public.subjects(id),
-  CONSTRAINT teacher_subject_assignments_term_id_fkey FOREIGN KEY (term_id) REFERENCES public.academic_terms(id),
-  CONSTRAINT teacher_subject_assignments_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id),
-  CONSTRAINT teacher_subject_assignments_assigned_by_fkey FOREIGN KEY (assigned_by) REFERENCES public.profiles(user_id)
-);
-CREATE TABLE public.teachers (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_id uuid UNIQUE,
-  employee_no text UNIQUE,
-  first_name text NOT NULL,
-  middle_name text,
-  last_name text NOT NULL,
-  employment_type USER-DEFINED NOT NULL DEFAULT 'full_time'::employment_type,
-  max_teaching_days integer NOT NULL DEFAULT 6 CHECK (max_teaching_days >= 1 AND max_teaching_days <= 6),
-  max_load_units numeric NOT NULL DEFAULT 24,
-  department_tags ARRAY NOT NULL DEFAULT '{}'::text[],
-  avatar_url text,
-  is_active boolean NOT NULL DEFAULT true,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT teachers_pkey PRIMARY KEY (id),
-  CONSTRAINT teachers_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(user_id)
-);
-CREATE TABLE public.venue_program_restrictions (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  venue_id uuid NOT NULL,
-  program_id uuid NOT NULL,
-  is_allowed boolean NOT NULL DEFAULT true,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT venue_program_restrictions_pkey PRIMARY KEY (id),
-  CONSTRAINT venue_program_restrictions_venue_id_fkey FOREIGN KEY (venue_id) REFERENCES public.venues(id),
-  CONSTRAINT venue_program_restrictions_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id)
-);
-CREATE TABLE public.venues (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  name text NOT NULL UNIQUE,
-  venue_type USER-DEFINED NOT NULL,
-  venue_subtype text,
-  capacity integer CHECK (capacity IS NULL OR capacity > 0),
-  is_active boolean NOT NULL DEFAULT true,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT venues_pkey PRIMARY KEY (id)
+  CONSTRAINT grade_period_settings_pkey PRIMARY KEY (class_offering_id, period),
+  CONSTRAINT grade_period_settings_class_offering_id_fkey FOREIGN KEY (class_offering_id) REFERENCES public.class_offerings(id)
 );

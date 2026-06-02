@@ -9,22 +9,35 @@ const STATUS_CONFIG = {
   default:  { label: 'Not Enrolled', color: '#8BA4BC', bg: '#EEF4FA', icon: 'time-outline' },
 };
 
-export default function EnrollmentStatusCard({ studentId }) {
+export default function EnrollmentStatusCard({ studentId, ready = false }) {
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!ready) return;
     if (!studentId) { setLoading(false); return; }
+    setLoading(true);
     supabase
       .from('class_students')
-      .select('classes(subject_code, subjects(name))')
+      .select(`
+        class_offering:class_offerings!class_offering_id (
+          subject:subjects!subject_id (
+            subject_code,
+            title
+          ),
+          term:academic_terms!term_id (
+            is_active
+          )
+        )
+      `)
       .eq('student_id', studentId)
+      .eq('is_active', true)
       .limit(3)
       .then(({ data }) => {
         setSubjects(data ?? []);
         setLoading(false);
       });
-  }, [studentId]);
+  }, [studentId, ready]);
 
   const isEnrolled = subjects.length > 0;
   const status = isEnrolled ? STATUS_CONFIG.enrolled : STATUS_CONFIG.default;
@@ -58,9 +71,9 @@ export default function EnrollmentStatusCard({ studentId }) {
       ) : isEnrolled ? (
         <View style={styles.subjectList}>
           {subjects.map((row, i) => {
-            const cls = row.classes;
-            const code = cls?.subject_code ?? '—';
-            const name = cls?.subjects?.name ?? '';
+            const subject = row.class_offering?.subject;
+            const code = subject?.subject_code ?? '—';
+            const name = subject?.title ?? '';
             return (
               <View key={i}>
                 {i > 0 && <View style={styles.rowDivider} />}

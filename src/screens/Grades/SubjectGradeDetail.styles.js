@@ -1,3 +1,229 @@
-﻿import { StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 
-export default StyleSheet.create({});
+export default StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: '#1a3c5e',
+  },
+  header: {
+    backgroundColor: '#1a3c5e',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 20,
+    overflow: 'hidden',
+  },
+  decOrb: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(42,122,182,0.15)',
+    top: -60,
+    right: -30,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  headerLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.4)',
+    letterSpacing: 2,
+    marginBottom: 2,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
+    lineHeight: 28,
+  },
+  scroll: {
+    backgroundColor: '#F2F6FA',
+  },
+  emptyBox: {
+    margin: 24,
+    alignItems: 'center',
+    padding: 24,
+  },
+  emptyText: {
+    fontSize: 15,
+    color: '#1A2A3A',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+
+  // Subject info card
+  infoCard: {
+    margin: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingTop: 4,
+    paddingBottom: 0,
+    elevation: 2,
+    shadowColor: '#1A2A3A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  infoLabel: {
+    fontSize: 13,
+    color: '#8BA4BC',
+    fontWeight: '500',
+  },
+  infoValue: {
+    fontSize: 13,
+    color: '#1A2A3A',
+    fontWeight: '600',
+    maxWidth: '55%',
+    textAlign: 'right',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#EBF4FC',
+    marginHorizontal: 16,
+  },
+
+  // Grade card
+  gradeCard: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    backgroundColor: '#1a3c5e',
+    borderRadius: 20,
+    padding: 20,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#1a3c5e',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+  },
+  decOrbCard: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(42,122,182,0.18)',
+    top: -70,
+    right: -50,
+  },
+  gradeCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  gradeCardTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 0.5,
+  },
+  equivalentGrade: {
+    fontSize: 56,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -1,
+    marginBottom: 16,
+  },
+  gradeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  gradeChip: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  gradeSep: {
+    width: 1,
+    height: 36,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  gradeChipLabel: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.45)',
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+    textTransform: 'uppercase',
+  },
+  gradeChipValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+
+  // Breakdown section
+  section: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#8BA4BC',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: 10,
+  },
+  periodCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 10,
+    elevation: 2,
+    shadowColor: '#1A2A3A',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+  },
+  periodLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#8BA4BC',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  periodGrade: {
+    fontSize: 34,
+    fontWeight: '800',
+    color: '#1a3c5e',
+    marginBottom: 14,
+    letterSpacing: -0.5,
+  },
+  compList: {
+    gap: 0,
+  },
+  compRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 9,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EBF4FC',
+  },
+  compLabel: {
+    fontSize: 13,
+    color: '#1A2A3A',
+    fontWeight: '500',
+  },
+  compValue: {
+    fontSize: 13,
+    color: '#2A7AB6',
+    fontWeight: '700',
+  },
+});

@@ -11,6 +11,7 @@ import EnrollmentStatusCard from './components/EnrollmentStatusCard';
 export default function HomeDashboard() {
   const { user } = useAuth();
   const [student, setStudent] = useState(null);
+  const [studentLoaded, setStudentLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadStudent = async () => {
@@ -20,6 +21,7 @@ export default function HomeDashboard() {
       .eq('user_id', user.id)
       .maybeSingle();
     setStudent(data);
+    setStudentLoaded(true);
   };
 
   useEffect(() => { loadStudent(); }, []);
@@ -44,7 +46,7 @@ export default function HomeDashboard() {
         <ActiveTermCard />
         <GradeSnapshotCard studentId={student?.id} />
         <View style={styles.enrollWrap}>
-          <EnrollmentStatusCard studentId={student?.id} />
+          <EnrollmentStatusCard studentId={student?.id} ready={studentLoaded} />
         </View>
       </ScrollView>
     </SafeAreaView>
