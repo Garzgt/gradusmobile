@@ -93,33 +93,23 @@ export function formatSemesterLabel(semester) {
 // Fetch published schedule_entries for the given subject codes in a term.
 // Returns { [portalSubjectCode]: schedule_entry[] } grouped by original portal code.
 export async function fetchScheduleEntriesForSubjects(termId, subjectCodes, supabase) {
-	console.log('[ADVISING] fetchScheduleEntriesForSubjects called', { termId, subjectCodes });
-	if (!termId || !subjectCodes?.length) {
-		console.log('[ADVISING] Early exit: missing termId or subjectCodes');
-		return {};
-	}
+	if (!termId || !subjectCodes?.length) return {};
 
-	// Normalize portal codes to match the normalized_subject_code column in Supabase
 	const normalizedToOriginal = {};
 	subjectCodes.forEach((code) => {
 		const norm = normalizeSubjectCode(code);
 		if (norm) normalizedToOriginal[norm] = code;
 	});
 	const normalizedCodes = Object.keys(normalizedToOriginal);
-	console.log('[ADVISING] Normalized codes to query:', normalizedCodes);
 	if (!normalizedCodes.length) return {};
 
-	// Look up subjects by normalized_subject_code
 	const { data: subjects, error: subErr } = await supabase
 		.from('subjects')
 		.select('id, subject_code, normalized_subject_code, title, credit_units')
 		.in('normalized_subject_code', normalizedCodes);
 
-	console.log('[ADVISING] subjects query result:', { subjects, subErr });
-	if (subErr) { console.log('[ADVISING] subjects query ERROR:', subErr); return {}; }
-	if (!subjects?.length) { console.log('[ADVISING] No subjects found for normalized codes'); return {}; }
+	if (subErr || !subjects?.length) return {};
 
-	// Map subject_id → original portal code
 	const idToOriginalCode = {};
 	const subjectIds = [];
 	subjects.forEach((s) => {
@@ -129,14 +119,9 @@ export async function fetchScheduleEntriesForSubjects(termId, subjectCodes, supa
 			subjectIds.push(s.id);
 		}
 	});
-	console.log('[ADVISING] Matched subject IDs:', subjectIds, 'idToOriginalCode:', idToOriginalCode);
 
-	if (!subjectIds.length) {
-		console.log('[ADVISING] No subject IDs matched');
-		return {};
-	}
+	if (!subjectIds.length) return {};
 
-	// Fetch entries for the active term (website publish sets is_locked on the term, not schedule_status on entries)
 	const { data: entries, error: entErr } = await supabase
 		.from('schedule_entries')
 		.select(`
@@ -150,9 +135,7 @@ export async function fetchScheduleEntriesForSubjects(termId, subjectCodes, supa
 		.eq('term_id', termId)
 		.in('subject_id', subjectIds);
 
-	console.log('[ADVISING] schedule_entries query result:', { count: entries?.length, entErr, sample: entries?.[0] });
-	if (entErr) { console.log('[ADVISING] schedule_entries ERROR:', entErr); return {}; }
-	if (!entries?.length) { console.log('[ADVISING] No entries found for these subjects in active term'); return {}; }
+	if (entErr || !entries?.length) return {};
 
 	// Group by original portal subject code
 	const grouped = {};

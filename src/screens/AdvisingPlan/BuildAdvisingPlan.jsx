@@ -37,7 +37,6 @@ const formatTimestamp = (value) => {
 export default function BuildAdvisingPlan() {
   const navigation = useNavigation();
   const { user } = useAuth();
-
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -75,22 +74,16 @@ export default function BuildAdvisingPlan() {
           .limit(1),
       ]);
 
-      // Set student and term first — must not be blocked by scan/selection parsing below
-      console.log('[ADVISING] studentResp:', studentResp?.data, 'termResp:', termResp?.data);
       setStudent(studentResp?.data ?? null);
       setActiveTerm(termResp?.data?.[0] ?? null);
 
-      // Parse scan data in isolation so a corrupt cache doesn't block the above
       try {
         const parsed = scanRaw ? JSON.parse(scanRaw) : null;
-        console.log('[ADVISING] scanData loaded:', parsed ? `${parsed.subjects?.length} subjects` : 'null');
         setScanData(parsed);
       } catch {
-        console.log('[ADVISING] scanData parse failed');
         setScanData(null);
       }
 
-      // Parse saved selection in isolation
       try {
         if (selectionRaw) {
           const parsedSelection = JSON.parse(selectionRaw);
@@ -103,7 +96,7 @@ export default function BuildAdvisingPlan() {
       } catch {
         // leave selection as default empty
       }
-    } catch (loadError) {
+    } catch {
       setError('Failed to load advising data. Please try again.');
     }
     setLoading(false);
@@ -128,44 +121,20 @@ export default function BuildAdvisingPlan() {
 
   const termSemester = activeTerm?.semester || null;
   const termLabel = activeTerm
-    ? `${activeTerm.school_year} - ${formatSemesterLabel(activeTerm.semester)}`
+    ? `${activeTerm.school_year} — ${formatSemesterLabel(activeTerm.semester)}`
     : 'Active term not set';
-  const yearLabel = student?.current_year_level
-    ? `${student.current_year_level} Year`
-    : 'Year level not set';
   const scannedAtLabel = formatTimestamp(scanData?.scannedAt);
   const scanCount = Array.isArray(scanData?.subjects) ? scanData.subjects.length : 0;
-  const scanSemesterSummary = useMemo(() => {
-    if (!Array.isArray(scanData?.subjects)) return '';
-    const counts = scanData.subjects.reduce((acc, subject) => {
-      const semester = Number(subject.semester) || 0;
-      if (!semester) return acc;
-      acc[semester] = (acc[semester] || 0) + 1;
-      return acc;
-    }, {});
-    const keys = Object.keys(counts).sort();
-    if (!keys.length) return '';
-    return keys.map((key) => `Sem ${key}: ${counts[key]}`).join(' · ');
-  }, [scanData]);
 
   const { eligibleBack, eligibleCurrent, blocked } = useMemo(() => {
     if (!scanData?.subjects?.length || !student?.current_year_level || !termSemester) {
       return { eligibleBack: [], eligibleCurrent: [], blocked: [] };
     }
-    const pools = buildEligiblePools({
+    return buildEligiblePools({
       subjects: scanData.subjects,
       currentYearLevel: student.current_year_level,
       currentSemester: termSemester,
     });
-    console.log('[ADVISING] buildEligiblePools:', {
-      currentYearLevel: student.current_year_level,
-      currentSemester: termSemester,
-      totalScanned: scanData.subjects?.length,
-      eligibleBack: pools.eligibleBack?.length,
-      eligibleCurrent: pools.eligibleCurrent?.length,
-      blocked: pools.blocked?.length,
-    });
-    return pools;
   }, [scanData, student, termSemester]);
 
   const eligibleBackWithKeys = useMemo(
@@ -178,6 +147,15 @@ export default function BuildAdvisingPlan() {
   );
   const allEligible = useMemo(
     () => [...eligibleBackWithKeys, ...eligibleCurrentWithKeys],
+    [eligibleBackWithKeys, eligibleCurrentWithKeys]
+  );
+
+  // Display list: back subjects first (flagged with isBack), then current
+  const allEligibleDisplay = useMemo(
+    () => [
+      ...eligibleBackWithKeys.map((s) => ({ ...s, isBack: true })),
+      ...eligibleCurrentWithKeys,
+    ],
     [eligibleBackWithKeys, eligibleCurrentWithKeys]
   );
 
@@ -209,18 +187,11 @@ export default function BuildAdvisingPlan() {
     [allEligible]
   );
   useEffect(() => {
-    if (!activeTerm?.id || !eligibleCodesKey) {
-      console.log('[ADVISING] entries fetch skipped — activeTerm.id:', activeTerm?.id, 'eligibleCodesKey:', eligibleCodesKey);
-      return;
-    }
+    if (!activeTerm?.id || !eligibleCodesKey) return;
     const codes = eligibleCodesKey.split(',').filter(Boolean);
-    console.log('[ADVISING] fetching entries for', codes.length, 'subjects, termId:', activeTerm.id);
     fetchScheduleEntriesForSubjects(activeTerm.id, codes, supabase)
-      .then((result) => {
-        console.log('[ADVISING] availableEntries result keys:', Object.keys(result));
-        setAvailableEntries(result);
-      })
-      .catch((err) => console.log('[ADVISING] fetchScheduleEntriesForSubjects error:', err));
+      .then((result) => setAvailableEntries(result))
+      .catch(() => {});
   }, [activeTerm?.id, eligibleCodesKey]);
 
   const setTeacherForSubject = useCallback((subjectKey, entry) => {
@@ -253,12 +224,12 @@ export default function BuildAdvisingPlan() {
         const { subjectCode, key } = subject;
         const chosen = teacherSelections[key];
         if (chosen?.teacherId && availableEntries[subjectCode]?.length) {
-          // Student picked a teacher → filter to only that teacher's entries, system picks best slot
+          // Student picked a teacher → filter to only that teacher's entries
           entriesToUse[subjectCode] = availableEntries[subjectCode].filter(
             (e) => e.teacher_id === chosen.teacherId,
           );
         } else if (availableEntries[subjectCode]?.length) {
-          // No teacher picked → auto-assign from all available entries across all teachers
+          // No teacher picked → auto-assign from all available entries
           entriesToUse[subjectCode] = availableEntries[subjectCode];
         } else {
           notFound.push({ subjectCode, reason: 'No available schedule found.' });
@@ -276,7 +247,7 @@ export default function BuildAdvisingPlan() {
         termSemester: activeTerm.semester,
         schoolYear: activeTerm.school_year,
       });
-    } catch (err) {
+    } catch {
       setError('Failed to generate plan. Please try again.');
     }
     setGenerating(false);
@@ -295,8 +266,8 @@ export default function BuildAdvisingPlan() {
   }, [selectedKeys, selectedSubjects, activeTerm]);
 
   const hasScan = scanData?.subjects?.length > 0;
-  const semesterLabel = formatSemesterLabel(termSemester);
   const selectedCount = selectedKeys.size;
+  const totalEligible = allEligible.length;
   const missingSetup = hasScan && (!student?.current_year_level || !termSemester);
   const noEligibleSubjects = hasScan
     && eligibleBackWithKeys.length === 0
@@ -309,7 +280,7 @@ export default function BuildAdvisingPlan() {
       <View style={styles.header}>
         <View style={styles.decOrb} />
         <Text style={styles.headerLabel}>ADVISING</Text>
-        <Text style={styles.headerTitle}>Advising Plan</Text>
+        <Text style={styles.headerTitle}>Build Plan</Text>
         <Text style={styles.headerSub}>Select subjects for this term</Text>
       </View>
 
@@ -321,75 +292,64 @@ export default function BuildAdvisingPlan() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2A7AB6" />
         }
       >
-        <View style={styles.infoBanner}>
-          <Ionicons name="information-circle-outline" size={18} color="#2A7AB6" />
-          <Text style={styles.infoText}>
-            Only subjects from the same semester are eligible. Completed subjects are based on blue rows.
-          </Text>
-        </View>
-
-        <View style={styles.termCard}>
-          <View style={styles.termRow}>
-            <Ionicons name="calendar-outline" size={18} color="#2A7AB6" />
-            <Text style={styles.termTitle}>Active term</Text>
+        {/* Info strip */}
+        <View style={styles.infoStrip}>
+          <View style={styles.infoStripLeft}>
+            <Text style={styles.infoStripTerm} numberOfLines={1}>{termLabel}</Text>
+            <View style={styles.infoChipRow}>
+              {student?.current_year_level ? (
+                <View style={styles.infoChip}>
+                  <Text style={styles.infoChipText}>{student.current_year_level} Year</Text>
+                </View>
+              ) : null}
+              {student?.programs?.code ? (
+                <View style={styles.infoChip}>
+                  <Text style={styles.infoChipText}>{student.programs.code}</Text>
+                </View>
+              ) : null}
+            </View>
+            {scannedAtLabel ? (
+              <Text style={styles.infoStripMeta}>Scan: {scannedAtLabel}</Text>
+            ) : null}
           </View>
-          <Text style={styles.termValue}>{termLabel}</Text>
-          <Text style={styles.termMeta}>{yearLabel}</Text>
-          {scannedAtLabel ? (
-            <Text style={styles.termMeta}>Last scan: {scannedAtLabel}</Text>
-          ) : null}
-          <TouchableOpacity
-            style={styles.termAction}
-            onPress={() => navigation.navigate(routes.EVALUATION_VIEWER)}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="scan-outline" size={16} color="#2A7AB6" />
-            <Text style={styles.termActionText}>Open Evaluation Viewer</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.scanStatusCard}>
-          <View style={styles.scanStatusRow}>
-            <Ionicons name="clipboard-outline" size={16} color="#2A7AB6" />
-            <Text style={styles.scanStatusTitle}>Scan status</Text>
+          <View style={styles.infoStripRight}>
+            {scanCount > 0 && (
+              <View style={styles.scanCountPill}>
+                <Text style={styles.scanCountText}>{scanCount}</Text>
+                <Text style={styles.scanCountLabel}>scanned</Text>
+              </View>
+            )}
+            <TouchableOpacity
+              style={styles.viewerBtn}
+              onPress={() => navigation.navigate(routes.EVALUATION_VIEWER)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="scan-outline" size={15} color="#2A7AB6" />
+            </TouchableOpacity>
           </View>
-          <Text style={styles.scanStatusValue}>
-            {scanCount > 0 ? `${scanCount} subject(s) loaded` : 'No scan data found'}
-          </Text>
-          <Text style={styles.scanStatusMeta}>
-            {scannedAtLabel ? `Last scan: ${scannedAtLabel}` : 'Run a scan to load subjects.'}
-          </Text>
-          {scanSemesterSummary ? (
-            <Text style={styles.scanStatusMeta}>Scan semesters: {scanSemesterSummary}</Text>
-          ) : null}
-          <TouchableOpacity
-            style={styles.scanReload}
-            onPress={() => loadData(true)}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="refresh" size={14} color="#2A7AB6" />
-            <Text style={styles.scanReloadText}>Reload scan data</Text>
-          </TouchableOpacity>
         </View>
 
+        {/* Error banner */}
         {error ? (
-          <View style={styles.errorBanner}>
-            <Ionicons name="alert-circle-outline" size={16} color="#C0392B" />
-            <Text style={styles.errorText}>{error}</Text>
+          <View style={styles.alertBanner}>
+            <Ionicons name="alert-circle-outline" size={15} color="#C0392B" />
+            <Text style={styles.alertText}>{error}</Text>
           </View>
         ) : null}
 
+        {/* Missing setup warning */}
         {missingSetup ? (
-          <View style={styles.setupBanner}>
-            <Ionicons name="alert-circle-outline" size={16} color="#B7770D" />
-            <Text style={styles.setupText}>
-              Missing active term or student year level. Update your profile or set an active term.
+          <View style={[styles.alertBanner, styles.alertWarn]}>
+            <Ionicons name="alert-circle-outline" size={15} color="#B7770D" />
+            <Text style={[styles.alertText, { color: '#B7770D' }]}>
+              Missing active term or year level. Check your profile.
             </Text>
           </View>
         ) : null}
 
+        {/* Loading skeleton */}
         {loading ? (
-          <View style={styles.loadingCard}>
+          <View style={styles.subjectCard}>
             <View style={{ gap: 10 }}>
               <SkeletonBox width="100%" height={14} borderRadius={7} />
               <SkeletonBox width="70%" height={14} borderRadius={7} />
@@ -397,94 +357,75 @@ export default function BuildAdvisingPlan() {
             </View>
           </View>
         ) : !hasScan ? (
+          /* No scan state */
           <View style={styles.emptyCard}>
-            <Ionicons name="scan-outline" size={24} color="#8BA4BC" />
+            <Ionicons name="scan-outline" size={28} color="#C8DFF0" />
             <Text style={styles.emptyTitle}>No scan data</Text>
-            <Text style={styles.emptyText}>
-              Scan your evaluation to build a subject plan.
-            </Text>
+            <Text style={styles.emptyText}>Scan your evaluation to load subjects.</Text>
             <TouchableOpacity
               style={styles.emptyButton}
               onPress={() => navigation.navigate(routes.EVALUATION_VIEWER)}
               activeOpacity={0.8}
             >
-              <Text style={styles.emptyButtonText}>Scan now</Text>
+              <Text style={styles.emptyButtonText}>Open Evaluation Viewer</Text>
             </TouchableOpacity>
           </View>
         ) : (
           <>
-            <Text style={styles.sectionLabel}>ELIGIBLE SUBJECTS</Text>
-
-            <SubjectPoolList
-              title="Back subjects"
-              subtitle={`Previous year subjects for ${semesterLabel}`}
-              subjects={eligibleBackWithKeys}
-              selectedKeys={selectedKeys}
-              onToggle={toggleSubject}
-              emptyLabel="No eligible back subjects."
-              availableEntries={availableEntries}
-              teacherSelections={teacherSelections}
-              onTeacherSelect={setTeacherForSubject}
-            />
-
-            <SubjectPoolList
-              title="Current year subjects"
-              subtitle={`Current year subjects for ${semesterLabel}`}
-              subjects={eligibleCurrentWithKeys}
-              selectedKeys={selectedKeys}
-              onToggle={toggleSubject}
-              emptyLabel="No eligible current subjects."
-              availableEntries={availableEntries}
-              teacherSelections={teacherSelections}
-              onTeacherSelect={setTeacherForSubject}
-            />
-
-            {noEligibleSubjects ? (
-              <View style={styles.emptyEligibility}>
-                <Ionicons name="information-circle-outline" size={16} color="#8BA4BC" />
-                <Text style={styles.emptyEligibilityText}>
-                  No eligible subjects for this term. Check your evaluation scan and term details.
-                </Text>
-              </View>
-            ) : null}
-
-            {blocked.length > 0 ? (
-              <View style={styles.blockedBanner}>
-                <Ionicons name="alert-circle-outline" size={16} color="#B7770D" />
-                <Text style={styles.blockedText}>
-                  {blocked.length} subject(s) are blocked by prerequisites.
-                </Text>
-              </View>
-            ) : null}
-
-            <View style={styles.footerCard}>
-              <Text style={styles.footerTitle}>Selected: {selectedCount} subject{selectedCount !== 1 ? 's' : ''}</Text>
-              <Text style={styles.footerText}>
-                The app will auto-assign the best available schedule for each subject and flag any conflicts.
-              </Text>
-              {selectionSavedAt ? (
-                <Text style={styles.footerMeta}>Last saved: {formatTimestamp(selectionSavedAt)}</Text>
-              ) : null}
-              <TouchableOpacity
-                style={[styles.generateBtn, (selectedCount === 0 || generating) && styles.generateBtnDisabled]}
-                onPress={handleGeneratePlan}
-                disabled={selectedCount === 0 || generating}
-                activeOpacity={0.8}
-              >
-                {generating ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <Ionicons name="flash-outline" size={16} color="#FFFFFF" />
+            {/* Subject list card */}
+            <View style={styles.subjectCard}>
+              <View style={styles.subjectCardHeader}>
+                <Text style={styles.subjectCardTitle}>ELIGIBLE SUBJECTS</Text>
+                {totalEligible > 0 && (
+                  <View style={styles.selectionPill}>
+                    <Text style={styles.selectionPillText}>{selectedCount}/{totalEligible}</Text>
+                  </View>
                 )}
-                <Text style={styles.generateBtnText}>
-                  {generating ? 'Generating...' : 'Generate Plan'}
-                </Text>
-              </TouchableOpacity>
+              </View>
+
+              {noEligibleSubjects ? (
+                <View style={styles.emptyInCard}>
+                  <Ionicons name="information-circle-outline" size={15} color="#8BA4BC" />
+                  <Text style={styles.emptyInCardText}>
+                    No eligible subjects for this term.
+                  </Text>
+                </View>
+              ) : (
+                <SubjectPoolList
+                  subjects={allEligibleDisplay}
+                  selectedKeys={selectedKeys}
+                  onToggle={toggleSubject}
+                  availableEntries={availableEntries}
+                  teacherSelections={teacherSelections}
+                  onTeacherSelect={setTeacherForSubject}
+                />
+              )}
             </View>
+
+            {/* Generate button */}
+            <TouchableOpacity
+              style={[styles.generateBtn, (selectedCount === 0 || generating) && styles.generateBtnDisabled]}
+              onPress={handleGeneratePlan}
+              disabled={selectedCount === 0 || generating}
+              activeOpacity={0.85}
+            >
+              {generating ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Ionicons name="flash-outline" size={18} color="#FFFFFF" />
+              )}
+              <Text style={styles.generateBtnText}>
+                {generating
+                  ? 'Generating…'
+                  : selectedCount > 0
+                    ? `Generate Plan · ${selectedCount} subject${selectedCount !== 1 ? 's' : ''}`
+                    : 'Generate Plan'}
+              </Text>
+            </TouchableOpacity>
           </>
         )}
 
-        <View style={{ height: 120 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -496,7 +437,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a3c5e',
     paddingHorizontal: 22,
     paddingTop: 10,
-    paddingBottom: 28,
+    paddingBottom: 24,
     overflow: 'hidden',
   },
   decOrb: {
@@ -525,33 +466,71 @@ const styles = StyleSheet.create({
   headerSub: {
     fontSize: 13,
     color: 'rgba(255,255,255,0.5)',
-    lineHeight: 18,
   },
   scroll: { flex: 1, backgroundColor: '#F2F6FA' },
-  content: { padding: 16, paddingTop: 22 },
-  sectionLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#8BA4BC',
-    letterSpacing: 2,
-    marginBottom: 10,
-    marginLeft: 2,
-  },
-  infoBanner: {
+  content: { padding: 16, paddingTop: 18, paddingBottom: 32 },
+
+  // Compact info strip
+  infoStrip: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#1a3c5e',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  infoStripLeft: { flex: 1, gap: 6 },
+  infoStripTerm: { fontSize: 14, fontWeight: '800', color: '#1A2A3A' },
+  infoChipRow: { flexDirection: 'row', gap: 6 },
+  infoChip: {
     backgroundColor: '#EBF4FC',
-    borderRadius: 14,
-    padding: 14,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
-  infoText: {
-    flex: 1,
-    fontSize: 12,
-    color: '#2A7AB6',
-    lineHeight: 18,
+  infoChipText: { fontSize: 11, fontWeight: '700', color: '#2A7AB6' },
+  infoStripMeta: { fontSize: 11, color: '#B0C4D8' },
+  infoStripRight: { flexDirection: 'row', alignItems: 'center', gap: 8, marginLeft: 12 },
+  scanCountPill: {
+    backgroundColor: '#EBF4FC',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    alignItems: 'center',
+    minWidth: 52,
   },
-  termCard: {
+  scanCountText: { fontSize: 20, fontWeight: '800', color: '#1a3c5e' },
+  scanCountLabel: { fontSize: 9, fontWeight: '600', color: '#8BA4BC', letterSpacing: 0.5 },
+  viewerBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#EBF4FC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Alert banners
+  alertBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FADBD8',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 10,
+  },
+  alertWarn: { backgroundColor: '#FDEBD0' },
+  alertText: { fontSize: 12, color: '#C0392B', flex: 1 },
+
+  // Subject card
+  subjectCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
     padding: 14,
@@ -562,112 +541,40 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 2,
   },
-  termRow: {
+  subjectCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
-  termTitle: {
-    fontSize: 12,
+  subjectCardTitle: {
+    fontSize: 10,
     fontWeight: '700',
-    color: '#2A7AB6',
-  },
-  termValue: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1A2A3A',
-    marginTop: 6,
-  },
-  termMeta: {
-    fontSize: 12,
     color: '#8BA4BC',
-    marginTop: 4,
+    letterSpacing: 2,
   },
-  termAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+  selectionPill: {
     backgroundColor: '#EBF4FC',
-    borderRadius: 10,
+    borderRadius: 999,
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    alignSelf: 'flex-start',
-    marginTop: 10,
+    paddingVertical: 3,
   },
-  termActionText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#2A7AB6',
-  },
-  scanStatusCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
-    marginTop: 12,
-    shadowColor: '#1a3c5e',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
-  },
-  scanStatusRow: {
+  selectionPillText: { fontSize: 12, fontWeight: '700', color: '#2A7AB6' },
+  emptyInCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    paddingVertical: 10,
   },
-  scanStatusTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#2A7AB6',
-  },
-  scanStatusValue: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1A2A3A',
-    marginTop: 6,
-  },
-  scanStatusMeta: {
-    fontSize: 12,
-    color: '#8BA4BC',
-    marginTop: 4,
-  },
-  scanReload: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
-    backgroundColor: '#EBF4FC',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    marginTop: 10,
-  },
-  scanReloadText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#2A7AB6',
-  },
-  errorBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#FADBD8',
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 12,
-  },
-  errorText: {
-    fontSize: 12,
-    color: '#C0392B',
-    flex: 1,
-  },
-  loadingCard: {
-    flexDirection: 'row',
+  emptyInCardText: { fontSize: 12, color: '#8BA4BC', flex: 1 },
+
+  // No-scan empty state
+  emptyCard: {
     alignItems: 'center',
     gap: 10,
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 14,
+    borderRadius: 18,
+    padding: 24,
     marginTop: 12,
     shadowColor: '#1a3c5e',
     shadowOffset: { width: 0, height: 2 },
@@ -675,127 +582,27 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 1,
   },
-  loadingText: {
-    fontSize: 12,
-    color: '#8BA4BC',
-  },
-  emptyCard: {
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 18,
-    marginTop: 12,
-    shadowColor: '#1a3c5e',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
-  },
-  emptyTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1A2A3A',
-  },
-  emptyText: {
-    fontSize: 12,
-    color: '#8BA4BC',
-    textAlign: 'center',
-  },
+  emptyTitle: { fontSize: 15, fontWeight: '700', color: '#1A2A3A' },
+  emptyText: { fontSize: 12, color: '#8BA4BC', textAlign: 'center' },
   emptyButton: {
-    marginTop: 8,
+    marginTop: 6,
     backgroundColor: '#2A7AB6',
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  emptyButtonText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  blockedBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#FDEBD0',
     borderRadius: 12,
-    padding: 12,
-    marginTop: 6,
+    paddingHorizontal: 18,
+    paddingVertical: 9,
   },
-  blockedText: {
-    fontSize: 12,
-    color: '#B7770D',
-    flex: 1,
-  },
-  setupBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#FDEBD0',
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 12,
-  },
-  setupText: {
-    fontSize: 12,
-    color: '#B7770D',
-    flex: 1,
-  },
-  emptyEligibility: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: '#EEF4FA',
-  },
-  emptyEligibilityText: {
-    fontSize: 12,
-    color: '#8BA4BC',
-    flex: 1,
-  },
-  footerCard: {
-    backgroundColor: '#EBF4FC',
-    borderRadius: 14,
-    padding: 14,
-    marginTop: 10,
-  },
-  footerTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#1A2A3A',
-    marginBottom: 6,
-  },
-  footerText: {
-    fontSize: 12,
-    color: '#2A7AB6',
-    lineHeight: 17,
-  },
-  footerMeta: {
-    fontSize: 11,
-    color: '#8BA4BC',
-    marginTop: 6,
-  },
+  emptyButtonText: { fontSize: 13, fontWeight: '700', color: '#FFFFFF' },
+
   generateBtn: {
+    marginTop: 14,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     backgroundColor: '#1a3c5e',
-    borderRadius: 12,
-    paddingVertical: 12,
-    marginTop: 12,
+    borderRadius: 14,
+    paddingVertical: 14,
   },
-  generateBtnDisabled: {
-    backgroundColor: '#C8DFF0',
-  },
-  generateBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
+  generateBtnDisabled: { backgroundColor: '#C8DFF0' },
+  generateBtnText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
 });

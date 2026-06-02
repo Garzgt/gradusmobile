@@ -1,61 +1,39 @@
-﻿import { StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 export default StyleSheet.create({
-	card: {
-		backgroundColor: '#FFFFFF',
-		borderRadius: 18,
-		padding: 14,
-		shadowColor: '#1a3c5e',
-		shadowOffset: { width: 0, height: 2 },
-		shadowOpacity: 0.06,
-		shadowRadius: 10,
-		elevation: 2,
-		marginBottom: 14,
-	},
-	headerRow: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		justifyContent: 'space-between',
-		marginBottom: 6,
-	},
-	title: {
-		fontSize: 14,
-		fontWeight: '800',
-		color: '#1A2A3A',
-	},
-	countBadge: {
-		backgroundColor: '#EBF4FC',
-		borderRadius: 999,
-		paddingHorizontal: 10,
-		paddingVertical: 4,
-	},
-	countText: {
-		fontSize: 12,
-		fontWeight: '700',
-		color: '#2A7AB6',
-	},
-	subtitle: {
-		fontSize: 12,
-		color: '#8BA4BC',
-		marginBottom: 10,
-	},
-	listWrap: {
-		gap: 0,
-	},
 	rowDivider: {
 		height: 1,
 		backgroundColor: '#EEF4FA',
+		marginVertical: 6,
+	},
+	sectionBreak: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 8,
+		marginVertical: 10,
+	},
+	sectionBreakLine: {
+		flex: 1,
+		height: 1,
+		backgroundColor: '#EEF4FA',
+	},
+	sectionBreakLabel: {
+		fontSize: 9,
+		fontWeight: '700',
+		color: '#8BA4BC',
+		letterSpacing: 1.5,
 	},
 	row: {
 		flexDirection: 'row',
 		alignItems: 'flex-start',
 		gap: 12,
-		paddingVertical: 12,
-		paddingHorizontal: 6,
+		paddingVertical: 14,
+		paddingHorizontal: 8,
 		borderRadius: 12,
 	},
 	rowSelected: {
 		backgroundColor: '#F3F8FD',
+		paddingVertical: 18,
 	},
 	checkCircle: {
 		width: 22,
@@ -92,6 +70,23 @@ export default StyleSheet.create({
 		fontWeight: '700',
 		color: '#2A7AB6',
 	},
+	codeRowRight: {
+		flexDirection: 'row',
+		alignItems: 'center',
+		gap: 6,
+	},
+	backBadge: {
+		backgroundColor: '#EBF4FC',
+		borderRadius: 5,
+		paddingHorizontal: 5,
+		paddingVertical: 1,
+	},
+	backBadgeText: {
+		fontSize: 8,
+		fontWeight: '700',
+		color: '#2A7AB6',
+		letterSpacing: 0.3,
+	},
 	unitsText: {
 		fontSize: 11,
 		color: '#8BA4BC',
@@ -101,10 +96,6 @@ export default StyleSheet.create({
 		fontSize: 13,
 		fontWeight: '600',
 		color: '#1A2A3A',
-	},
-	metaText: {
-		fontSize: 11,
-		color: '#8BA4BC',
 	},
 	emptyState: {
 		flexDirection: 'row',
@@ -132,7 +123,7 @@ export default StyleSheet.create({
 	},
 	teacherOption: {
 		flexDirection: 'row',
-		alignItems: 'flex-start',
+		alignItems: 'center',
 		gap: 10,
 		padding: 10,
 		borderRadius: 10,
@@ -152,7 +143,6 @@ export default StyleSheet.create({
 		borderColor: '#C8DFF0',
 		alignItems: 'center',
 		justifyContent: 'center',
-		marginTop: 2,
 		flexShrink: 0,
 	},
 	teacherRadioChosen: {
@@ -164,15 +154,11 @@ export default StyleSheet.create({
 		borderRadius: 4,
 		backgroundColor: '#2A7AB6',
 	},
-	teacherOptionBody: { flex: 1, gap: 2 },
 	teacherName: {
 		fontSize: 13,
 		fontWeight: '600',
 		color: '#1A2A3A',
-	},
-	teacherSchedule: {
-		fontSize: 11,
-		color: '#8BA4BC',
+		flex: 1,
 	},
 	teacherNoSchedule: {
 		flexDirection: 'row',

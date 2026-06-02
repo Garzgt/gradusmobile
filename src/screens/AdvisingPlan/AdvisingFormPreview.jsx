@@ -5,7 +5,6 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,9 +12,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Asset } from 'expo-asset';
 import { useAuth } from '../../context/AuthContext';
+import { useAlert } from '../../context/AlertContext';
+import { useToast } from '../../context/ToastContext';
 import { supabase } from '../../config/supabase';
 import ScheduleGrid from './components/ScheduleGrid';
 import CourseTableView from './components/CourseTableView';
@@ -136,8 +137,8 @@ function buildFormHtml({ student, userEmail, termSemester, schoolYear, courseRow
 
 <table style="border:none;width:100%;margin-bottom:6px;">
   <tr>
-    <td style="border:none;width:70px;text-align:center;vertical-align:middle;">
-      ${logoLeft ? `<img src="data:image/jpeg;base64,${logoLeft}" style="width:62px;height:62px;object-fit:contain;" />` : ''}
+    <td style="border:none;width:90px;text-align:center;vertical-align:middle;padding-left:4px;padding-right:14px;">
+      ${logoLeft ? `<img src="data:image/jpeg;base64,${logoLeft}" style="width:72px;height:72px;object-fit:contain;" />` : ''}
     </td>
     <td style="border:none;text-align:center;vertical-align:middle;">
       <p style="font-size:8.5pt">Republic of the Philippines</p>
@@ -146,8 +147,8 @@ function buildFormHtml({ student, userEmail, termSemester, schoolYear, courseRow
       <p class="form-title">PRE-REGISTRATION FORM</p>
       <p class="term-title">${semLabel}, ${ayLabel}</p>
     </td>
-    <td style="border:none;width:70px;text-align:center;vertical-align:middle;">
-      ${logoRight ? `<img src="data:image/jpeg;base64,${logoRight}" style="width:62px;height:62px;object-fit:contain;" />` : ''}
+    <td style="border:none;width:90px;text-align:center;vertical-align:middle;padding-right:4px;padding-left:14px;">
+      ${logoRight ? `<img src="data:image/jpeg;base64,${logoRight}" style="width:72px;height:72px;object-fit:contain;" />` : ''}
     </td>
   </tr>
 </table>
@@ -293,6 +294,8 @@ export default function AdvisingFormPreview() {
   const navigation = useNavigation();
   const route = useRoute();
   const { user } = useAuth();
+  const alert = useAlert();
+  const toast = useToast();
   const [generating, setGenerating] = useState(false);
 
   const {
@@ -326,21 +329,21 @@ export default function AdvisingFormPreview() {
   }, [assigned]);
 
   const handleGenerateForm = () => {
-    Alert.alert(
-      'Generate Pre-Registration Form',
-      'This creates a printable PDF of your advising plan to physically submit to your coordinator.',
-      [
+    alert.show({
+      type: 'info',
+      title: 'Generate Pre-Registration Form',
+      message: 'This creates a printable PDF of your advising plan to physically submit to your coordinator.',
+      buttons: [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Generate PDF', style: 'default', onPress: doGenerateForm },
+        { text: 'Generate PDF', onPress: doGenerateForm },
       ],
-    );
+    });
   };
 
   const doGenerateForm = async () => {
     if (!user) return;
     setGenerating(true);
     try {
-      console.log('[FORM] step 1: fetch student');
       const { data: student, error: sErr } = await supabase
         .from('students')
         .select('id, student_number, first_name, middle_name, last_name, contact_number, email, current_year_level, programs(code, name)')
@@ -348,9 +351,7 @@ export default function AdvisingFormPreview() {
         .maybeSingle();
 
       if (sErr || !student) throw new Error('Student record not found.');
-      console.log('[FORM] step 1 done:', student.student_number);
 
-      // Save plan record
       const seen = new Set();
       const selectedOfferings = assigned
         .filter((e) => {
@@ -374,8 +375,7 @@ export default function AdvisingFormPreview() {
         }));
 
       if (termId) {
-        console.log('[FORM] step 2: save plan');
-        const { error: upsertErr } = await supabase.from('advising_plans').upsert(
+        await supabase.from('advising_plans').upsert(
           {
             student_id: student.id,
             term_id: termId,
@@ -387,28 +387,22 @@ export default function AdvisingFormPreview() {
           },
           { onConflict: 'student_id,term_id' },
         );
-        if (upsertErr) console.log('[FORM] upsert warning:', upsertErr.message);
       }
 
-      // Build course rows — group all days per subject
-      console.log('[FORM] step 3: load logos');
       let logoLeft = null;
       let logoRight = null;
       try {
-        const [leftAsset, rightAsset] = await Asset.loadAsync([
-          require('../../../assets/images/formlogo/logoLeft.jpg'),
-          require('../../../assets/images/formlogo/logoRight.jpg'),
-        ]);
+        const leftAsset = Asset.fromModule(require('../../../assets/images/formlogo/logoLeft.jpg'));
+        const rightAsset = Asset.fromModule(require('../../../assets/images/formlogo/logoRight.jpg'));
+        await Promise.all([leftAsset.downloadAsync(), rightAsset.downloadAsync()]);
         [logoLeft, logoRight] = await Promise.all([
-          FileSystem.readAsStringAsync(leftAsset.localUri, { encoding: FileSystem.EncodingType.Base64 }),
-          FileSystem.readAsStringAsync(rightAsset.localUri, { encoding: FileSystem.EncodingType.Base64 }),
+          FileSystem.readAsStringAsync(leftAsset.localUri, { encoding: 'base64' }),
+          FileSystem.readAsStringAsync(rightAsset.localUri, { encoding: 'base64' }),
         ]);
-        console.log('[FORM] logos loaded');
-      } catch (logoErr) {
-        console.log('[FORM] logo load failed (continuing without):', logoErr.message);
+      } catch {
+        // continue without logos
       }
 
-      console.log('[FORM] step 3b: build HTML');
       const subjectMap = {};
       assigned.forEach((entry) => {
         const code = entry._subjectCode || entry.subjects?.subject_code;
@@ -460,15 +454,9 @@ export default function AdvisingFormPreview() {
         logoLeft,
         logoRight,
       });
-      console.log('[FORM] HTML length:', html.length);
 
-      console.log('[FORM] step 4: printToFileAsync');
       const { uri } = await Print.printToFileAsync({ html, base64: false });
-      console.log('[FORM] PDF uri:', uri);
-
-      console.log('[FORM] step 5: share');
       const canShare = await Sharing.isAvailableAsync();
-      console.log('[FORM] canShare:', canShare);
       if (canShare) {
         await Sharing.shareAsync(uri, {
           mimeType: 'application/pdf',
@@ -478,10 +466,8 @@ export default function AdvisingFormPreview() {
       } else {
         await Print.printAsync({ uri });
       }
-      console.log('[FORM] done');
     } catch (err) {
-      console.log('[FORM] ERROR:', err);
-      Alert.alert('Error', err.message || 'Could not generate form. Please try again.');
+      toast.show({ type: 'error', title: 'Error', message: err.message || 'Could not generate form. Please try again.' });
     } finally {
       setGenerating(false);
     }

@@ -8,8 +8,20 @@ function getTeacherName(teacher) {
   return `${teacher.first_name || ''} ${teacher.last_name || ''}`.trim() || 'TBA';
 }
 
-// One entry per unique teacher — stores all entries for that teacher so the
-// system can auto-pick the best non-conflicting section/time later.
+function ordinal(n) {
+  if (n === 1) return '1st';
+  if (n === 2) return '2nd';
+  if (n === 3) return '3rd';
+  return `${n}th`;
+}
+
+function backLabel(subject) {
+  const yr = subject.yearLevel ? `${ordinal(subject.yearLevel)} Yr` : null;
+  const sem = subject.semester ? `Sem ${subject.semester}` : null;
+  if (yr && sem) return `${yr} · ${sem}`;
+  return yr || sem || 'Back';
+}
+
 function groupByTeacher(entries) {
   const map = {};
   entries.forEach((entry) => {
@@ -43,14 +55,15 @@ function SubjectRow({ subject, subjectKey, isSelected, onToggle, entries, chosen
           <View style={styles.codeTag}>
             <Text style={styles.codeText}>{subject.subjectCode}</Text>
           </View>
-          <Text style={styles.unitsText}>{subject.units || 0}u</Text>
+          <View style={styles.codeRowRight}>
+            {(subject.yearLevel || subject.semester) && (
+              <View style={styles.backBadge}>
+                <Text style={styles.backBadgeText}>{backLabel(subject)}</Text>
+              </View>
+            )}
+          </View>
         </View>
         <Text style={styles.nameText} numberOfLines={2}>{subject.subjectName}</Text>
-        {subject.prerequisites?.length ? (
-          <Text style={styles.metaText} numberOfLines={2}>
-            Prereq: {subject.prerequisites.join(', ')}
-          </Text>
-        ) : null}
 
         {isSelected && (
           <View style={styles.teacherPicker}>
@@ -68,18 +81,14 @@ function SubjectRow({ subject, subjectKey, isSelected, onToggle, entries, chosen
                     <View style={[styles.teacherRadio, isChosen && styles.teacherRadioChosen]}>
                       {isChosen && <View style={styles.teacherRadioDot} />}
                     </View>
-                    <View style={styles.teacherOptionBody}>
-                      <Text style={styles.teacherName}>{t.teacherName}</Text>
-                    </View>
+                    <Text style={styles.teacherName}>{t.teacherName}</Text>
                   </TouchableOpacity>
                 );
               })
             ) : (
               <View style={styles.teacherNoSchedule}>
                 <Ionicons name="information-circle-outline" size={13} color="#8BA4BC" />
-                <Text style={styles.teacherNoScheduleText}>
-                  No teacher assigned for this subject.
-                </Text>
+                <Text style={styles.teacherNoScheduleText}>No teacher assigned yet.</Text>
               </View>
             )}
           </View>
@@ -90,12 +99,9 @@ function SubjectRow({ subject, subjectKey, isSelected, onToggle, entries, chosen
 }
 
 export default function SubjectPoolList({
-  title,
-  subtitle,
   subjects,
   selectedKeys,
   onToggle,
-  emptyLabel,
   availableEntries,
   teacherSelections,
   onTeacherSelect,
@@ -103,46 +109,49 @@ export default function SubjectPoolList({
   const list = Array.isArray(subjects) ? subjects : [];
   const selected = selectedKeys instanceof Set ? selectedKeys : new Set();
 
-  return (
-    <View style={styles.card}>
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>{title}</Text>
-        <View style={styles.countBadge}>
-          <Text style={styles.countText}>{list.length}</Text>
-        </View>
+  if (list.length === 0) {
+    return (
+      <View style={styles.emptyState}>
+        <Ionicons name="book-outline" size={20} color="#C8DFF0" />
+        <Text style={styles.emptyText}>No eligible subjects for this term.</Text>
       </View>
-      {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+    );
+  }
 
-      {list.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Ionicons name="alert-circle-outline" size={18} color="#8BA4BC" />
-          <Text style={styles.emptyText}>{emptyLabel || 'No subjects available.'}</Text>
-        </View>
-      ) : (
-        <View style={styles.listWrap}>
-          {list.map((subject, index) => {
-            const key = subject.key || `${subject.subjectCode}-${index}`;
-            const isSelected = selected.has(key);
-            const entries = availableEntries?.[subject.subjectCode] || [];
-            const chosenTeacherId = teacherSelections?.[key]?.teacherId;
+  return (
+    <View>
+      {list.map((subject, index) => {
+        const key = subject.key || `${subject.subjectCode}-${index}`;
+        const isSelected = selected.has(key);
+        const entries = availableEntries?.[subject.subjectCode] || [];
+        const chosenTeacherId = teacherSelections?.[key]?.teacherId;
 
-            return (
-              <View key={key}>
-                {index > 0 ? <View style={styles.rowDivider} /> : null}
-                <SubjectRow
-                  subject={subject}
-                  subjectKey={key}
-                  isSelected={isSelected}
-                  onToggle={onToggle}
-                  entries={entries}
-                  chosenTeacherId={chosenTeacherId}
-                  onTeacherSelect={onTeacherSelect}
-                />
+        const prevSubject = index > 0 ? list[index - 1] : null;
+        const isSectionBreak = prevSubject?.isBack === true && !subject.isBack;
+
+        return (
+          <View key={key}>
+            {isSectionBreak ? (
+              <View style={styles.sectionBreak}>
+                <View style={styles.sectionBreakLine} />
+                <Text style={styles.sectionBreakLabel}>CURRENT YEAR</Text>
+                <View style={styles.sectionBreakLine} />
               </View>
-            );
-          })}
-        </View>
-      )}
+            ) : index > 0 ? (
+              <View style={styles.rowDivider} />
+            ) : null}
+            <SubjectRow
+              subject={subject}
+              subjectKey={key}
+              isSelected={isSelected}
+              onToggle={onToggle}
+              entries={entries}
+              chosenTeacherId={chosenTeacherId}
+              onTeacherSelect={onTeacherSelect}
+            />
+          </View>
+        );
+      })}
     </View>
   );
 }
