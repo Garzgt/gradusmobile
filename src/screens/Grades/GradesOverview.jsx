@@ -112,7 +112,9 @@ export default function GradesOverview() {
               passedCount={passedCount}
             />
             <View style={styles.listSection}>
-              <Text style={styles.sectionTitle}>Enrolled Subjects</Text>
+              <View style={styles.sectionTitleCard}>
+                <Text style={styles.sectionTitle}>Enrolled Subjects</Text>
+              </View>
               {activeGrades.map(grade => (
                 <SubjectCard
                   key={grade.classOfferingId}

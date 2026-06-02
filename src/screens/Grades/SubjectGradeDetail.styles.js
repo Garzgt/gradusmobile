@@ -36,7 +36,7 @@ export default StyleSheet.create({
 
   // ── Info card ─────────────────────────────────────────────────────────────
   infoCard: {
-    margin: 16, marginBottom: 0,
+    marginHorizontal: 10, marginTop: 10, marginBottom: 0,
     backgroundColor: '#FFFFFF', borderRadius: 16,
     paddingTop: 4,
     elevation: 2,
@@ -53,7 +53,7 @@ export default StyleSheet.create({
 
   // ── Final grade card ──────────────────────────────────────────────────────
   gradeCard: {
-    marginHorizontal: 16, marginTop: 14, marginBottom: 0,
+    marginHorizontal: 10, marginTop: 8, marginBottom: 0,
     backgroundColor: '#1a3c5e', borderRadius: 20, padding: 20,
     overflow: 'hidden',
     elevation: 4,
@@ -84,15 +84,42 @@ export default StyleSheet.create({
   gradeChipValue: { fontSize: 18, fontWeight: '700', color: '#FFFFFF' },
 
   // ── Breakdown wrapper ─────────────────────────────────────────────────────
-  breakdownWrap: { marginTop: 20, marginHorizontal: 16, marginBottom: 8 },
-  breakdownTitle: {
-    fontSize: 11, fontWeight: '700', color: '#8BA4BC',
-    letterSpacing: 1, textTransform: 'uppercase', marginBottom: 12,
+  breakdownWrap: { marginTop: 10, marginHorizontal: 10, marginBottom: 8 },
+  sectionLabel: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginBottom: 10,
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#1A2A3A', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06, shadowRadius: 4,
   },
+  sectionLabelText: {
+    fontSize: 11, fontWeight: '700', color: '#8BA4BC',
+    letterSpacing: 1.5, textTransform: 'uppercase',
+  },
+
+  // ── Period tab switcher ───────────────────────────────────────────────────
+  periodTabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#EBF4FC',
+    borderRadius: 12,
+    padding: 3,
+    marginBottom: 10,
+  },
+  periodTab: {
+    flex: 1, paddingVertical: 9,
+    alignItems: 'center', borderRadius: 10,
+  },
+  periodTabActive: { backgroundColor: '#1a3c5e' },
+  periodTabText: { fontSize: 13, fontWeight: '600', color: '#8BA4BC' },
+  periodTabTextActive: { color: '#FFFFFF' },
 
   // ── Period section ────────────────────────────────────────────────────────
   periodSection: {
-    backgroundColor: '#FFFFFF', borderRadius: 18, marginBottom: 14,
+    backgroundColor: '#FFFFFF', borderRadius: 18, marginBottom: 8,
     overflow: 'hidden',
     elevation: 2,
     shadowColor: '#1A2A3A', shadowOffset: { width: 0, height: 1 },
@@ -119,9 +146,10 @@ export default StyleSheet.create({
   },
   compBlockHeader: {
     flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', marginBottom: 10,
+    justifyContent: 'space-between',
   },
   compBlockLeft:    { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  compBlockRight:   { flexDirection: 'row', alignItems: 'center', gap: 8 },
   compBlockIconWrap: {
     width: 26, height: 26, borderRadius: 8,
     backgroundColor: '#EBF4FC', alignItems: 'center', justifyContent: 'center',
@@ -130,7 +158,7 @@ export default StyleSheet.create({
   compBlockScore:    { flexDirection: 'row', alignItems: 'baseline', gap: 2 },
   compBlockScoreVal: { fontSize: 16, fontWeight: '800', color: '#1a3c5e' },
   compBlockScoreMax: { fontSize: 11, color: '#8BA4BC', fontWeight: '500' },
-  compBlockBody:     { gap: 0 },
+  compBlockBody:     { gap: 0, marginTop: 10 },
 
   // ── Score row with mini bar ───────────────────────────────────────────────
   scoreRow: {
@@ -162,6 +190,45 @@ export default StyleSheet.create({
   subtotalChipLabel:   { fontSize: 11, color: '#8BA4BC', fontWeight: '500' },
   subtotalChipVal:     { fontSize: 12, fontWeight: '700', color: '#1A2A3A' },
 
+  // ── Grade weights card ────────────────────────────────────────────────────
+  weightsCard: {
+    backgroundColor: '#FFFFFF', borderRadius: 18, marginTop: 8,
+    overflow: 'hidden',
+    elevation: 2,
+    shadowColor: '#1A2A3A', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.07, shadowRadius: 6,
+  },
+  weightsHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 16, paddingVertical: 14,
+  },
+  weightsIconWrap: {
+    width: 26, height: 26, borderRadius: 8,
+    backgroundColor: '#EBF4FC', alignItems: 'center', justifyContent: 'center',
+  },
+  weightsTitle: { fontSize: 13, fontWeight: '700', color: '#1A2A3A' },
+  weightsDivider: { height: 1, backgroundColor: '#EBF4FC', marginHorizontal: 16 },
+  weightsRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 16, paddingVertical: 10,
+  },
+  weightsRowBorder: { borderTopWidth: 1, borderTopColor: '#F5F9FD' },
+  weightsLabel:  { fontSize: 13, color: '#5A7A9A', fontWeight: '500', width: 90 },
+  weightsBarBg:  {
+    flex: 1, height: 5, borderRadius: 3,
+    backgroundColor: '#EBF4FC', overflow: 'hidden',
+  },
+  weightsBarFill: { height: '100%', borderRadius: 3, backgroundColor: '#2A7AB6' },
+  weightsValue:  { fontSize: 13, fontWeight: '700', color: '#1a3c5e', width: 38, textAlign: 'right' },
+  transmuteRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    marginHorizontal: 16, marginTop: 4, marginBottom: 14,
+    backgroundColor: '#EBF4FC', borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 8,
+  },
+  transmuteLabel: { fontSize: 12, color: '#5A7A9A', fontWeight: '500' },
+  transmuteValue: { fontSize: 13, fontWeight: '700', color: '#1a3c5e' },
+
   // ── Attendance rows ───────────────────────────────────────────────────────
   attRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 7,
@@ -175,6 +242,13 @@ export default StyleSheet.create({
   attDate:       { flex: 1, fontSize: 12, color: '#8BA4BC', fontWeight: '400' },
   attBadge:      { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
   attBadgeText:  { fontSize: 11, fontWeight: '700' },
+
+  attToggle: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 5, paddingVertical: 10, marginTop: 4,
+    borderTopWidth: 1, borderTopColor: '#F0F6FC',
+  },
+  attToggleText: { fontSize: 12, color: '#2A7AB6', fontWeight: '600' },
 
   attSummary: {
     flexDirection: 'row', alignItems: 'center',
