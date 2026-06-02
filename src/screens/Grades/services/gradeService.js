@@ -172,28 +172,45 @@ export async function fetchStudentGrades(userId) {
 }
 
 export async function fetchGradeDetail(classOfferingId, studentId) {
-  const [offeringRes, componentsRes] = await Promise.all([
+  const [offeringRes, componentsRes, sheetSettingsRes, periodSettingsRes, attendanceRes] = await Promise.all([
     supabase.from('class_offerings').select(OFFERING_FIELDS).eq('id', classOfferingId).maybeSingle(),
     supabase.from('grade_components').select('*').eq('class_offering_id', classOfferingId).eq('student_id', studentId),
+    supabase.from('grade_sheet_settings').select('*').eq('class_offering_id', classOfferingId).maybeSingle(),
+    supabase.from('grade_period_settings').select('*').eq('class_offering_id', classOfferingId),
+    supabase.from('grade_attendance_entries')
+      .select('meeting_date, meeting_number, attendance_value, period')
+      .eq('class_offering_id', classOfferingId)
+      .eq('student_id', studentId)
+      .order('meeting_number', { ascending: true }),
   ]);
 
   if (offeringRes.error) return { data: null, error: offeringRes.error };
 
-  const offering    = offeringRes.data;
-  const components  = componentsRes.data ?? [];
-  const midRow      = components.find(c => c.period === 'midterm') ?? null;
-  const finRow      = components.find(c => c.period === 'final')   ?? null;
+  const offering       = offeringRes.data;
+  const components     = componentsRes.data ?? [];
+  const midRow         = components.find(c => c.period === 'midterm') ?? null;
+  const finRow         = components.find(c => c.period === 'final')   ?? null;
+  const sheetSettings  = sheetSettingsRes.data ?? null;
+  const periodSettings = periodSettingsRes.data ?? [];
+  const midPeriodSettings = periodSettings.find(p => p.period === 'midterm') ?? null;
+  const finPeriodSettings = periodSettings.find(p => p.period === 'final')   ?? null;
+  const attendance     = attendanceRes.data ?? [];
 
   return {
     data: {
       classOfferingId,
       studentId,
-      subject:          offering?.subject  ?? null,
-      term:             offering?.term     ?? null,
-      teacher:          offering?.teacher  ?? null,
-      section:          offering?.section  ?? null,
-      midtermComponent: midRow,
-      finalComponent:   finRow,
+      subject:            offering?.subject  ?? null,
+      term:               offering?.term     ?? null,
+      teacher:            offering?.teacher  ?? null,
+      section:            offering?.section  ?? null,
+      midtermComponent:   midRow,
+      finalComponent:     finRow,
+      sheetSettings,
+      midPeriodSettings,
+      finPeriodSettings,
+      midAttendance:      attendance.filter(a => a.period === 'midterm'),
+      finAttendance:      attendance.filter(a => a.period === 'final'),
       components,
       ...computeGradeEntry(midRow, finRow),
     },
