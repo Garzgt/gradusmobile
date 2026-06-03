@@ -2,7 +2,7 @@ import { StyleSheet } from 'react-native';
 
 export default StyleSheet.create({
   card: {
-    marginHorizontal: 16,
+    marginHorizontal: 10,
     marginTop: 10,
     backgroundColor: '#1a3c5e',
     borderRadius: 16,

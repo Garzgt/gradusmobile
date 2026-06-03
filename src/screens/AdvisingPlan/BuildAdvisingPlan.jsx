@@ -468,7 +468,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.5)',
   },
   scroll: { flex: 1, backgroundColor: '#F2F6FA' },
-  content: { padding: 16, paddingTop: 18, paddingBottom: 32 },
+  content: { paddingHorizontal: 10, paddingTop: 18, paddingBottom: 32 },
 
   // Compact info strip
   infoStrip: {

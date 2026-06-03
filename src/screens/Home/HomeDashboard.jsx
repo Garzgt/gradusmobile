@@ -56,6 +56,6 @@ export default function HomeDashboard() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#1a3c5e' },
   scroll: { flex: 1, backgroundColor: '#F2F6FA' },
-  content: { padding: 16, paddingTop: 20, gap: 14, paddingBottom: 140, flexGrow: 1 },
+  content: { paddingHorizontal: 10, paddingTop: 14, paddingBottom: 140, gap: 12, flexGrow: 1 },
   enrollWrap: { flex: 1 },
 });

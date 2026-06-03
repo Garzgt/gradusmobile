@@ -440,8 +440,8 @@ export default function SubjectGradeDetail() {
               <InfoRow label="Term"    value={formatTermLabel(data?.term)} last />
             </View>
 
-            {/* Final grade card */}
-            <View style={styles.gradeCard}>
+            {/* Final grade card — only shown once teacher posts grades */}
+            {data.hasPostedGrade && <View style={styles.gradeCard}>
               <View style={styles.decOrbCard} />
               <View style={styles.gradeCardTop}>
                 <Text style={styles.gradeCardTitle}>Final Grade</Text>
@@ -463,7 +463,7 @@ export default function SubjectGradeDetail() {
                   </Text>
                 </View>
               </View>
-            </View>
+            </View>}
 
             {/* Grade breakdown */}
             {(data?.midtermComponent || data?.finalComponent) ? (

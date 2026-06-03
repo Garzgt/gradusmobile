@@ -1,52 +1,5 @@
 import { supabase } from '../../../config/supabase';
 
-// --- Grade computation: mirrors Desktop gradeCompute.js ---
-
-const GRADE_EQUIV = {
-  100: 1.00, 99: 1.05, 98: 1.10, 97: 1.15, 96: 1.20,
-  95: 1.25,  94: 1.30, 93: 1.35, 92: 1.40, 91: 1.45,
-  90: 1.50,  89: 1.60, 88: 1.70, 87: 1.80, 86: 1.90,
-  85: 2.00,  84: 2.10, 83: 2.20, 82: 2.30, 81: 2.40,
-  80: 2.50,  79: 2.60, 78: 2.70, 77: 2.80, 76: 2.90,
-  75: 3.00,  74: 3.00,
-};
-
-function lookupEquivalent(points) {
-  const floored = Math.floor(points);
-  if (floored < 74) return 5.00;
-  return GRADE_EQUIV[Math.min(floored, 100)] ?? 5.00;
-}
-
-function computeGradeEntry(midRow, finRow) {
-  const isDropped =
-    midRow?.term_grade_label === 'FA'  || midRow?.term_grade_label === 'DRP' ||
-    finRow?.term_grade_label  === 'FA' || finRow?.term_grade_label  === 'DRP';
-
-  if (isDropped) {
-    return {
-      midGrade: midRow?.term_grade_numeric ?? null,
-      finGrade: finRow?.term_grade_numeric ?? null,
-      finalPoints: null,
-      equivalent: null,
-      remarks: 'DROPPED',
-    };
-  }
-
-  const midGrade = midRow?.term_grade_numeric != null ? Number(midRow.term_grade_numeric) : null;
-  const finGrade = finRow?.term_grade_numeric != null ? Number(finRow.term_grade_numeric) : null;
-
-  if (midGrade === null || finGrade === null) {
-    return { midGrade, finGrade, finalPoints: null, equivalent: null, remarks: 'INC' };
-  }
-
-  const finalPoints = midGrade * 0.5 + finGrade * 0.5;
-  const equivalent  = lookupEquivalent(Math.round(finalPoints));
-  const remarks     = equivalent >= 5.00 ? 'FAILED' : 'PASSED';
-  return { midGrade, finGrade, finalPoints, equivalent, remarks };
-}
-
-// --- Supabase select strings ---
-
 const OFFERING_FIELDS = `
   id,
   subject:subjects!subject_id (
@@ -75,23 +28,13 @@ const OFFERING_FIELDS = `
   )
 `;
 
-const COMPONENT_FIELDS = `
+const POSTED_GRADE_FIELDS = `
   class_offering_id,
-  period,
-  term_grade_numeric,
-  term_grade_label,
-  quizzes_weighted,
-  quizzes_raw,
-  activities_weighted,
-  activities_raw,
-  attendance_weighted,
-  attendance_raw,
-  recitation_weighted,
-  recitation_raw,
-  laboratory_weighted,
-  laboratory_raw,
-  major_exam_weighted,
-  major_exam_raw
+  midterm_points,
+  final_term_points,
+  final_points,
+  equivalent_grade,
+  remarks
 `;
 
 // --- Public API ---
@@ -103,9 +46,7 @@ export async function fetchStudentGrades(userId) {
     .eq('user_id', userId)
     .maybeSingle();
 
-  if (sErr || !student) {
-    return { data: null, error: sErr ?? new Error('Student not found') };
-  }
+  if (sErr || !student) return { data: null, error: sErr ?? new Error('Student not found') };
 
   const { data: enrollments, error: eErr } = await supabase
     .from('class_students')
@@ -121,40 +62,39 @@ export async function fetchStudentGrades(userId) {
 
   const offeringIds = enrollments.map(e => e.class_offering_id);
 
-  const { data: components, error: cErr } = await supabase
-    .from('grade_components')
-    .select(COMPONENT_FIELDS)
+  const { data: postedGrades, error: gErr } = await supabase
+    .from('grades')
+    .select(POSTED_GRADE_FIELDS)
     .eq('student_id', student.id)
+    .eq('status', 'posted')
     .in('class_offering_id', offeringIds);
 
-  if (cErr) return { data: null, error: cErr };
+  if (gErr) return { data: null, error: gErr };
 
-  // Build per-offering component map: id → { midterm, final }
-  const compMap = {};
-  for (const comp of components ?? []) {
-    const id = comp.class_offering_id;
-    if (!compMap[id]) compMap[id] = {};
-    compMap[id][comp.period] = comp;
+  const gradeMap = {};
+  for (const g of postedGrades ?? []) {
+    gradeMap[g.class_offering_id] = g;
   }
 
   const grades = enrollments.map(enrollment => {
     const offering = enrollment.class_offering;
-    const midRow   = compMap[enrollment.class_offering_id]?.midterm ?? null;
-    const finRow   = compMap[enrollment.class_offering_id]?.final   ?? null;
+    const posted   = gradeMap[enrollment.class_offering_id] ?? null;
     return {
-      classOfferingId:  enrollment.class_offering_id,
-      studentId:        student.id,
-      subject:          offering?.subject  ?? null,
-      term:             offering?.term     ?? null,
-      teacher:          offering?.teacher  ?? null,
-      section:          offering?.section  ?? null,
-      midtermComponent: midRow,
-      finalComponent:   finRow,
-      ...computeGradeEntry(midRow, finRow),
+      classOfferingId: enrollment.class_offering_id,
+      studentId:       student.id,
+      subject:         offering?.subject  ?? null,
+      term:            offering?.term     ?? null,
+      teacher:         offering?.teacher  ?? null,
+      section:         offering?.section  ?? null,
+      midGrade:    posted?.midterm_points    != null ? Number(posted.midterm_points)    : null,
+      finGrade:    posted?.final_term_points != null ? Number(posted.final_term_points) : null,
+      finalPoints: posted?.final_points      != null ? Number(posted.final_points)      : null,
+      equivalent:  posted?.equivalent_grade  != null ? Number(posted.equivalent_grade)  : null,
+      remarks:     posted?.remarks ?? null,
     };
   });
 
-  // Group by term, sort newest first
+  // Group by term, newest first
   const termMap = {};
   for (const grade of grades) {
     const term = grade.term;
@@ -172,8 +112,21 @@ export async function fetchStudentGrades(userId) {
 }
 
 export async function fetchGradeDetail(classOfferingId, studentId) {
-  const [offeringRes, componentsRes, sheetSettingsRes, periodSettingsRes, attendanceRes] = await Promise.all([
+  const [
+    offeringRes,
+    postedGradeRes,
+    componentsRes,
+    sheetSettingsRes,
+    periodSettingsRes,
+    attendanceRes,
+  ] = await Promise.all([
     supabase.from('class_offerings').select(OFFERING_FIELDS).eq('id', classOfferingId).maybeSingle(),
+    supabase.from('grades')
+      .select(POSTED_GRADE_FIELDS)
+      .eq('class_offering_id', classOfferingId)
+      .eq('student_id', studentId)
+      .eq('status', 'posted')
+      .maybeSingle(),
     supabase.from('grade_components').select('*').eq('class_offering_id', classOfferingId).eq('student_id', studentId),
     supabase.from('grade_sheet_settings').select('*').eq('class_offering_id', classOfferingId).maybeSingle(),
     supabase.from('grade_period_settings').select('*').eq('class_offering_id', classOfferingId),
@@ -186,15 +139,16 @@ export async function fetchGradeDetail(classOfferingId, studentId) {
 
   if (offeringRes.error) return { data: null, error: offeringRes.error };
 
-  const offering       = offeringRes.data;
-  const components     = componentsRes.data ?? [];
-  const midRow         = components.find(c => c.period === 'midterm') ?? null;
-  const finRow         = components.find(c => c.period === 'final')   ?? null;
-  const sheetSettings  = sheetSettingsRes.data ?? null;
-  const periodSettings = periodSettingsRes.data ?? [];
+  const offering          = offeringRes.data;
+  const postedGrade       = postedGradeRes.data ?? null;
+  const components        = componentsRes.data  ?? [];
+  const midRow            = components.find(c => c.period === 'midterm') ?? null;
+  const finRow            = components.find(c => c.period === 'final')   ?? null;
+  const sheetSettings     = sheetSettingsRes.data ?? null;
+  const periodSettings    = periodSettingsRes.data ?? [];
   const midPeriodSettings = periodSettings.find(p => p.period === 'midterm') ?? null;
   const finPeriodSettings = periodSettings.find(p => p.period === 'final')   ?? null;
-  const attendance     = attendanceRes.data ?? [];
+  const attendance        = attendanceRes.data ?? [];
 
   return {
     data: {
@@ -209,10 +163,16 @@ export async function fetchGradeDetail(classOfferingId, studentId) {
       sheetSettings,
       midPeriodSettings,
       finPeriodSettings,
-      midAttendance:      attendance.filter(a => a.period === 'midterm'),
-      finAttendance:      attendance.filter(a => a.period === 'final'),
+      midAttendance:  attendance.filter(a => a.period === 'midterm'),
+      finAttendance:  attendance.filter(a => a.period === 'final'),
       components,
-      ...computeGradeEntry(midRow, finRow),
+      // Grade values only populated when teacher has posted grades
+      hasPostedGrade: postedGrade != null,
+      midGrade:    postedGrade?.midterm_points    != null ? Number(postedGrade.midterm_points)    : null,
+      finGrade:    postedGrade?.final_term_points != null ? Number(postedGrade.final_term_points) : null,
+      finalPoints: postedGrade?.final_points      != null ? Number(postedGrade.final_points)      : null,
+      equivalent:  postedGrade?.equivalent_grade  != null ? Number(postedGrade.equivalent_grade)  : null,
+      remarks:     postedGrade?.remarks ?? null,
     },
     error: null,
   };
