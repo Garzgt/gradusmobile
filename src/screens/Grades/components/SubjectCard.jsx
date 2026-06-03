@@ -19,6 +19,7 @@ export default function SubjectCard({ grade, onPress }) {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
       <View style={[styles.banner, { backgroundColor: accentColor }]}>
+        <View style={styles.bannerOverlay} />
         <Ionicons
           name={BANNER_ICONS[iconIdx]}
           size={60}

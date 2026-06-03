@@ -21,6 +21,10 @@ export default StyleSheet.create({
     justifyContent: 'space-between',
     overflow: 'hidden',
   },
+  bannerOverlay: {
+    ...require('react-native').StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.30)',
+  },
   bgIcon: {
     position: 'absolute',
     right: 10,
