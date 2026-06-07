@@ -6,6 +6,8 @@ import { useAuth } from '../context/AuthContext';
 import AuthNavigator from './AuthNavigator';
 import StudentTabNavigator from './StudentTabNavigator';
 import NotificationInbox from '../screens/Notifications/NotificationInbox';
+import MyRecognition from '../screens/Recognition/MyRecognition';
+import RecognitionCriteria from '../screens/Recognition/RecognitionCriteria';
 import colors from '../styles/colors';
 import routes from '../config/routes';
 import DomainBlocked from '../screens/Auth/DomainBlocked';
@@ -39,6 +41,8 @@ export default function AppNavigator() {
           <>
             <Stack.Screen name="StudentApp" component={StudentTabNavigator} />
             <Stack.Screen name={routes.NOTIFICATIONS} component={NotificationInbox} />
+            <Stack.Screen name={routes.MY_RECOGNITION} component={MyRecognition} />
+            <Stack.Screen name={routes.RECOGNITION_CRITERIA} component={RecognitionCriteria} />
           </>
         )}
       </Stack.Navigator>

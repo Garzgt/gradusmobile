@@ -3,11 +3,12 @@ import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet, Image,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../config/supabase';
 import SkeletonBox from '../../components/SkeletonLoader';
+import routes from '../../config/routes';
 
 const YEAR_LABEL = { 1: '1st Year', 2: '2nd Year', 3: '3rd Year', 4: '4th Year' };
 const SEX_LABEL  = { M: 'Male', F: 'Female' };
@@ -32,6 +33,7 @@ function InfoRow({ icon, label, value, last }) {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function Profile() {
+  const navigation = useNavigation();
   const { user, profile, signOut } = useAuth();
   const insets = useSafeAreaInsets();
 
@@ -165,6 +167,21 @@ export default function Profile() {
           )}
         </View>
 
+        {/* Recognition */}
+        <TouchableOpacity
+          style={styles.recognitionBtn}
+          onPress={() => navigation.navigate(routes.MY_RECOGNITION)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.recognitionLeft}>
+            <View style={styles.recognitionIcon}>
+              <Ionicons name="trophy-outline" size={16} color="#D97706" />
+            </View>
+            <Text style={styles.recognitionText}>My Recognition</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color="#8BA4BC" />
+        </TouchableOpacity>
+
         {/* Sign out */}
         <TouchableOpacity style={styles.signOutBtn} onPress={signOut} activeOpacity={0.85}>
           <Ionicons name="log-out-outline" size={18} color="#FFFFFF" />
@@ -274,6 +291,38 @@ const styles = StyleSheet.create({
     height: 1, backgroundColor: '#F0F6FC',
   },
 
+  recognitionBtn: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    elevation: 2,
+    shadowColor: '#1a3c5e',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+  },
+  recognitionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  recognitionIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recognitionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1A2A3A',
+  },
   signOutBtn: {
     backgroundColor: '#2A7AB6', borderRadius: 14,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
