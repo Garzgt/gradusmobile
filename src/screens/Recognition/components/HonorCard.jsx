@@ -8,14 +8,18 @@ const HONOR_CONFIG = {
     icon: 'trophy',
     color: '#D97706',
     bg: '#FEF3C7',
-    badgeText: '#D97706',
   },
   deans_list: {
     label: "Dean's List",
     icon: 'ribbon',
     color: '#2A7AB6',
     bg: '#EBF4FC',
-    badgeText: '#2A7AB6',
+  },
+  top25_university: {
+    label: 'Top 25 University',
+    icon: 'star',
+    color: '#1a3c5e',
+    bg: '#EEF4FA',
   },
 };
 
@@ -29,29 +33,39 @@ export default function HonorCard({ item }) {
   const config = HONOR_CONFIG[item.honor_type] ?? HONOR_CONFIG.deans_list;
 
   return (
-    <View style={[styles.card, { borderLeftColor: config.color }]}>
-      <View style={[styles.iconWrap, { backgroundColor: config.bg }]}>
-        <Ionicons name={config.icon} size={26} color={config.color} />
-      </View>
-      <View style={styles.body}>
-        <View style={styles.topRow}>
-          <View style={[styles.badge, { backgroundColor: config.bg }]}>
-            <Text style={[styles.badgeText, { color: config.badgeText }]}>
-              {config.label}
-            </Text>
-          </View>
+    <View style={styles.card}>
+      <View style={[styles.cardTop, { backgroundColor: config.color }]}>
+        <View style={[styles.iconWrap, { backgroundColor: 'rgba(255,255,255,0.18)' }]}>
+          <Ionicons name={config.icon} size={26} color="#FFFFFF" />
+        </View>
+        <View style={styles.cardTopText}>
+          <Text style={styles.honorLabel}>{config.label}</Text>
           {item.term?.is_active && (
             <View style={styles.currentBadge}>
-              <Text style={styles.currentBadgeText}>Current</Text>
+              <Text style={styles.currentBadgeText}>Current Term</Text>
             </View>
           )}
         </View>
-        <Text style={styles.term}>{termLabel(item.term)}</Text>
-        <View style={styles.gwaRow}>
-          <Text style={styles.gwaLabel}>GWA</Text>
-          <Text style={[styles.gwaValue, { color: config.color }]}>
-            {parseFloat(item.gwa).toFixed(2)}
-          </Text>
+      </View>
+
+      <View style={styles.cardBody}>
+        <View style={styles.infoItem}>
+          <Text style={styles.infoLabel}>TERM</Text>
+          <Text style={styles.infoValue}>{termLabel(item.term)}</Text>
+        </View>
+        <View style={styles.rightGroup}>
+          {item.rank && (
+            <View style={[styles.infoItem, { alignItems: 'flex-end' }]}>
+              <Text style={styles.infoLabel}>RANK</Text>
+              <Text style={[styles.gwaValue, { color: config.color }]}>#{item.rank}</Text>
+            </View>
+          )}
+          <View style={[styles.infoItem, { alignItems: 'flex-end' }]}>
+            <Text style={styles.infoLabel}>GWA</Text>
+            <Text style={[styles.gwaValue, { color: config.color }]}>
+              {parseFloat(item.gwa).toFixed(2)}
+            </Text>
+          </View>
         </View>
       </View>
     </View>
@@ -61,76 +75,86 @@ export default function HonorCard({ item }) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
+    borderRadius: 16,
     marginHorizontal: 10,
-    marginBottom: 10,
+    marginBottom: 12,
+    overflow: 'hidden',
+    elevation: 3,
+    shadowColor: '#1a3c5e',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+  },
+  cardTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
     gap: 14,
-    borderLeftWidth: 4,
-    elevation: 2,
-    shadowColor: '#1a3c5e',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
   iconWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 0,
   },
-  body: {
+  cardTopText: {
     flex: 1,
-    gap: 5,
+    gap: 6,
   },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  badge: {
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: '700',
+  honorLabel: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
   },
   currentBadge: {
-    backgroundColor: '#E8F5EE',
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.22)',
     borderRadius: 20,
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 3,
   },
   currentBadgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#16A34A',
+    color: '#FFFFFF',
   },
-  term: {
+  cardBody: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  infoItem: {
+    gap: 3,
+  },
+  infoLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#8BA4BC',
+    letterSpacing: 1,
+  },
+  infoValue: {
     fontSize: 13,
     fontWeight: '600',
     color: '#1A2A3A',
   },
-  gwaRow: {
+  gwaValue: {
+    fontSize: 22,
+    fontWeight: '800',
+    textAlign: 'right',
+  },
+  rightGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 16,
   },
-  gwaLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#8BA4BC',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  gwaValue: {
-    fontSize: 16,
-    fontWeight: '800',
+  dividerV: {
+    width: 1,
+    height: 36,
+    backgroundColor: '#EEF4FA',
   },
 });

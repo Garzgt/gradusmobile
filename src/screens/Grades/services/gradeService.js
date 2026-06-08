@@ -34,7 +34,8 @@ const POSTED_GRADE_FIELDS = `
   final_term_points,
   final_points,
   equivalent_grade,
-  remarks
+  remarks,
+  status
 `;
 
 // --- Public API ---
@@ -66,7 +67,7 @@ export async function fetchStudentGrades(userId) {
     .from('grades')
     .select(POSTED_GRADE_FIELDS)
     .eq('student_id', student.id)
-    .eq('status', 'posted')
+    .in('status', ['posted', 'approved'])
     .in('class_offering_id', offeringIds);
 
   if (gErr) return { data: null, error: gErr };
@@ -91,6 +92,7 @@ export async function fetchStudentGrades(userId) {
       finalPoints: posted?.final_points      != null ? Number(posted.final_points)      : null,
       equivalent:  posted?.equivalent_grade  != null ? Number(posted.equivalent_grade)  : null,
       remarks:     posted?.remarks ?? null,
+      gradeStatus: posted?.status ?? null,
     };
   });
 

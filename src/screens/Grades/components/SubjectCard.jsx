@@ -11,7 +11,7 @@ const BANNER_ICONS = [
 ];
 
 export default function SubjectCard({ grade, onPress }) {
-  const { subject, equivalent, remarks, teacher } = grade;
+  const { subject, equivalent, remarks, gradeStatus, teacher } = grade;
   const accentColor = subject?.color_hex ?? '#2A7AB6';
   const gradeDisplay = equivalent != null ? equivalent.toFixed(2) : '—';
   const iconIdx = (subject?.subject_code?.charCodeAt(0) ?? 0) % BANNER_ICONS.length;
@@ -28,7 +28,7 @@ export default function SubjectCard({ grade, onPress }) {
         />
         <View style={styles.bannerTop}>
           <Text style={styles.subjectCode}>{subject?.subject_code ?? '—'}</Text>
-          <GradeStatusBadge remarks={remarks} />
+          <GradeStatusBadge remarks={remarks} gradeStatus={gradeStatus} />
         </View>
         <Text style={styles.subjectTitle} numberOfLines={2}>{subject?.title ?? '—'}</Text>
       </View>

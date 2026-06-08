@@ -9,22 +9,54 @@ import SkeletonBox from '../../../components/SkeletonLoader';
 export default function GradeSnapshotCard({ studentId }) {
   const navigation = useNavigation();
   const [gwa, setGwa] = useState(null);
+  const [termLabel, setTermLabel] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!studentId) { setLoading(false); return; }
-    supabase
-      .from('grades')
-      .select('final_grade')
-      .eq('student_id', studentId)
-      .eq('status', 'posted')
-      .then(({ data }) => {
-        if (data?.length) {
-          const avg = data.reduce((s, r) => s + Number(r.final_grade), 0) / data.length;
-          setGwa(avg.toFixed(2));
+
+    async function load() {
+      const { data: term } = await supabase
+        .from('academic_terms')
+        .select('id, school_year, semester')
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (!term) { setLoading(false); return; }
+
+      const sem = term.semester === 1 ? '1st Sem' : '2nd Sem';
+      setTermLabel(`${sem} ${term.school_year}`);
+
+      const { data: grades } = await supabase
+        .from('grades')
+        .select(`
+          equivalent_grade,
+          class_offering:class_offerings!class_offering_id (
+            term_id,
+            subject:subjects!subject_id ( credit_units )
+          )
+        `)
+        .eq('student_id', studentId)
+        .in('status', ['posted', 'approved']);
+
+      if (grades?.length) {
+        const termGrades = grades.filter(
+          g => g.class_offering?.term_id === term.id && g.equivalent_grade != null
+        );
+        if (termGrades.length) {
+          const totalUnits = termGrades.reduce(
+            (s, g) => s + (parseFloat(g.class_offering?.subject?.credit_units) || 0), 0
+          );
+          const weighted = termGrades.reduce(
+            (s, g) => s + (parseFloat(g.equivalent_grade) * (parseFloat(g.class_offering?.subject?.credit_units) || 0)), 0
+          );
+          if (totalUnits > 0) setGwa((weighted / totalUnits).toFixed(2));
         }
-        setLoading(false);
-      });
+      }
+      setLoading(false);
+    }
+
+    load();
   }, [studentId]);
 
   return (
@@ -38,11 +70,12 @@ export default function GradeSnapshotCard({ studentId }) {
         {loading ? (
           <SkeletonBox width={110} height={52} borderRadius={10} style={{ marginTop: 6, marginBottom: 4 }} />
         ) : (
-          <Text style={styles.gwa}>{gwa ?? '—'}</Text>
+          <Text style={[styles.gwa, !gwa && styles.gwaDash]}>{gwa ?? '—'}</Text>
         )}
         <Text style={styles.sub}>
-          {gwa ? 'Based on posted grades' : 'No grades posted yet'}
+          {gwa ? `General Weighted Average` : 'No grades posted yet'}
         </Text>
+        {termLabel ? <Text style={styles.termLabel}>{termLabel}</Text> : null}
       </View>
 
       <View style={styles.right}>
@@ -85,9 +118,18 @@ const styles = StyleSheet.create({
     letterSpacing: -1,
     marginTop: 2,
   },
+  gwaDash: {
+    color: '#C8DFF0',
+  },
   sub: {
     fontSize: 12,
     color: '#8BA4BC',
+    marginTop: 2,
+  },
+  termLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1a3c5e',
     marginTop: 2,
   },
   right: {

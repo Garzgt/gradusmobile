@@ -5,8 +5,9 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import SkeletonBox from '../../components/SkeletonLoader';
-import { fetchMyHonors } from './services/recognitionService';
+import { fetchMyHonors, fetchStudentRankings } from './services/recognitionService';
 import HonorCard from './components/HonorCard';
+import RankingCard from './components/RankingCard';
 import routes from '../../config/routes';
 
 export default function MyRecognition() {
@@ -17,6 +18,8 @@ export default function MyRecognition() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [honors, setHonors] = useState([]);
+  const [rankings, setRankings] = useState(null);
+  const [programCode, setProgramCode] = useState(null);
   const [error, setError] = useState('');
 
   const loadData = useCallback(async (isRefresh = false) => {
@@ -24,12 +27,22 @@ export default function MyRecognition() {
     if (!isRefresh) setLoading(true);
     setError('');
 
-    const { data, error: err } = await fetchMyHonors(user.id);
-    if (err) {
+    const [honorsRes, rankingsRes] = await Promise.all([
+      fetchMyHonors(user.id),
+      fetchStudentRankings(user.id),
+    ]);
+
+    if (honorsRes.error) {
       setError('Could not load recognition. Pull down to retry.');
     } else {
-      setHonors(data);
+      setHonors(honorsRes.data);
     }
+
+    if (!rankingsRes.error && rankingsRes.data) {
+      setRankings(rankingsRes.data.rankings);
+      setProgramCode(rankingsRes.data.programCode);
+    }
+
     setLoading(false);
   }, [user]);
 
@@ -80,6 +93,10 @@ export default function MyRecognition() {
           <Text style={styles.criteriaBtnText}>View Honor Criteria</Text>
           <Ionicons name="chevron-forward" size={14} color="#2A7AB6" />
         </TouchableOpacity>
+
+        {rankings && (
+          <RankingCard rankings={rankings} programCode={programCode} />
+        )}
 
         <View style={styles.listSection}>
           <View style={styles.sectionLabelCard}>
