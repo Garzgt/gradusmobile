@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../../../config/supabase';
 import SkeletonBox from '../../../components/SkeletonLoader';
 
@@ -13,31 +14,43 @@ export default function EnrollmentStatusCard({ studentId, ready = false }) {
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     if (!ready) return;
     if (!studentId) { setLoading(false); return; }
     setLoading(true);
-    supabase
-      .from('class_students')
-      .select(`
-        class_offering:class_offerings!class_offering_id (
-          subject:subjects!subject_id (
-            subject_code,
-            title
-          ),
-          term:academic_terms!term_id (
-            is_active
-          )
-        )
-      `)
-      .eq('student_id', studentId)
-      .eq('is_active', true)
-      .limit(3)
-      .then(({ data }) => {
-        setSubjects(data ?? []);
+
+    (async () => {
+      const { data: activeTerm } = await supabase
+        .from('academic_terms')
+        .select('id')
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (!activeTerm) {
+        setSubjects([]);
         setLoading(false);
-      });
-  }, [studentId, ready]);
+        return;
+      }
+
+      const { data } = await supabase
+        .from('class_students')
+        .select(`
+          class_offering:class_offerings!class_offering_id!inner (
+            subject:subjects!subject_id (
+              subject_code,
+              title
+            )
+          )
+        `)
+        .eq('student_id', studentId)
+        .eq('is_active', true)
+        .eq('class_offering.term_id', activeTerm.id)
+        .limit(10);
+
+      setSubjects(data ?? []);
+      setLoading(false);
+    })();
+  }, [studentId, ready]));
 
   const isEnrolled = subjects.length > 0;
   const status = isEnrolled ? STATUS_CONFIG.enrolled : STATUS_CONFIG.default;
@@ -69,29 +82,37 @@ export default function EnrollmentStatusCard({ studentId, ready = false }) {
           ))}
         </View>
       ) : isEnrolled ? (
-        <View style={styles.subjectList}>
-          {subjects.map((row, i) => {
-            const subject = row.class_offering?.subject;
-            const code = subject?.subject_code ?? '—';
-            const name = subject?.title ?? '';
-            return (
-              <View key={i}>
-                {i > 0 && <View style={styles.rowDivider} />}
-                <View style={styles.subjectRow}>
-                  <View style={styles.codeTag}>
-                    <Text style={styles.subjectCode}>{code}</Text>
+        <>
+          <ScrollView
+            style={styles.subjectScroll}
+            nestedScrollEnabled
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.subjectList}>
+              {subjects.map((row, i) => {
+                const subject = row.class_offering?.subject;
+                const code = subject?.subject_code ?? '—';
+                const name = subject?.title ?? '';
+                return (
+                  <View key={i}>
+                    {i > 0 && <View style={styles.rowDivider} />}
+                    <View style={styles.subjectRow}>
+                      <View style={styles.codeTag}>
+                        <Text style={styles.subjectCode}>{code}</Text>
+                      </View>
+                      {name ? (
+                        <Text style={styles.subjectName} numberOfLines={1}>{name}</Text>
+                      ) : null}
+                    </View>
                   </View>
-                  {name ? (
-                    <Text style={styles.subjectName} numberOfLines={1}>{name}</Text>
-                  ) : null}
-                </View>
-              </View>
-            );
-          })}
-          {subjects.length === 3 && (
+                );
+              })}
+            </View>
+          </ScrollView>
+          {subjects.length === 10 && (
             <Text style={styles.more}>+ more subjects enrolled</Text>
           )}
-        </View>
+        </>
       ) : (
         <View style={styles.emptyState}>
           <Ionicons name="calendar-outline" size={30} color="#C8DFF0" />
@@ -154,6 +175,9 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: '#EEF4FA',
     marginBottom: 12,
+  },
+  subjectScroll: {
+    maxHeight: 220,
   },
   subjectList: {
     gap: 0,

@@ -22,20 +22,27 @@ function timeAgo(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
 }
 
-export default function NotificationCard({ item, onPress }) {
+export default function NotificationCard({ item, onPress, onLongPress, selectMode, selected }) {
   const config = TYPE_CONFIG[item.notification_type] ?? TYPE_CONFIG.general;
   const unread = !item.is_read;
 
   return (
     <TouchableOpacity
-      style={[styles.card, unread && styles.cardUnread]}
+      style={[styles.card, unread && styles.cardUnread, selected && styles.cardSelected]}
       onPress={() => onPress(item)}
+      onLongPress={() => onLongPress(item)}
       activeOpacity={0.75}
     >
       {unread && <View style={styles.unreadStrip} />}
-      <View style={[styles.iconWrap, { backgroundColor: config.bg }]}>
-        <Ionicons name={config.icon} size={20} color={config.color} />
-      </View>
+      {selectMode ? (
+        <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
+          {selected && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
+        </View>
+      ) : (
+        <View style={[styles.iconWrap, { backgroundColor: config.bg }]}>
+          <Ionicons name={config.icon} size={20} color={config.color} />
+        </View>
+      )}
       <View style={styles.body}>
         <View style={styles.titleRow}>
           <Text style={[styles.title, unread && styles.titleUnread]} numberOfLines={1}>
@@ -69,6 +76,24 @@ const styles = StyleSheet.create({
   cardUnread: {
     backgroundColor: '#FAFCFF',
     elevation: 2,
+  },
+  cardSelected: {
+    backgroundColor: '#EBF4FC',
+  },
+  checkbox: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 2,
+    borderColor: '#C8DFF0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    marginHorizontal: 8,
+  },
+  checkboxSelected: {
+    backgroundColor: '#2A7AB6',
+    borderColor: '#2A7AB6',
   },
   unreadStrip: {
     position: 'absolute',

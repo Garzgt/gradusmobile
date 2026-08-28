@@ -1,5 +1,16 @@
 import { supabase } from '../../../config/supabase';
 
+export async function fetchUnreadCount(userId) {
+  const { count, error } = await supabase
+    .from('notifications')
+    .select('id', { count: 'exact', head: true })
+    .eq('recipient_user_id', userId)
+    .eq('is_read', false);
+
+  if (error) return { count: 0, error };
+  return { count: count ?? 0, error: null };
+}
+
 export async function fetchNotifications(userId) {
   const { data, error } = await supabase
     .from('notifications')
@@ -25,5 +36,13 @@ export async function markAllAsRead(userId) {
     .update({ is_read: true, read_at: new Date().toISOString() })
     .eq('recipient_user_id', userId)
     .eq('is_read', false);
+  return { error };
+}
+
+export async function deleteNotifications(ids) {
+  const { error } = await supabase
+    .from('notifications')
+    .delete()
+    .in('id', ids);
   return { error };
 }

@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../../../config/supabase';
 import routes from '../../../config/routes';
 import SkeletonBox from '../../../components/SkeletonLoader';
+import { computeTermGwa } from '../../Grades/services/gradeService';
 
 export default function GradeSnapshotCard({ studentId }) {
   const navigation = useNavigation();
@@ -31,27 +32,24 @@ export default function GradeSnapshotCard({ studentId }) {
         .from('grades')
         .select(`
           equivalent_grade,
-          class_offering:class_offerings!class_offering_id (
+          remarks,
+          class_offering:class_offerings!class_offering_id!inner (
             term_id,
             subject:subjects!subject_id ( credit_units )
           )
         `)
         .eq('student_id', studentId)
+        .eq('class_offering.term_id', term.id)
         .in('status', ['posted', 'approved']);
 
       if (grades?.length) {
-        const termGrades = grades.filter(
-          g => g.class_offering?.term_id === term.id && g.equivalent_grade != null
-        );
-        if (termGrades.length) {
-          const totalUnits = termGrades.reduce(
-            (s, g) => s + (parseFloat(g.class_offering?.subject?.credit_units) || 0), 0
-          );
-          const weighted = termGrades.reduce(
-            (s, g) => s + (parseFloat(g.equivalent_grade) * (parseFloat(g.class_offering?.subject?.credit_units) || 0)), 0
-          );
-          if (totalUnits > 0) setGwa((weighted / totalUnits).toFixed(2));
-        }
+        const termGrades = grades.map(g => ({
+          equivalent: g.equivalent_grade != null ? Number(g.equivalent_grade) : null,
+          remarks: g.remarks,
+          subject: g.class_offering?.subject,
+        }));
+        const result = computeTermGwa(termGrades);
+        if (result) setGwa(result);
       }
       setLoading(false);
     }

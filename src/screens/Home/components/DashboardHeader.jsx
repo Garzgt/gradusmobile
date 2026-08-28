@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import * as Notifications from 'expo-notifications';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../../context/AuthContext';
+import { fetchUnreadCount } from '../../Notifications/services/notificationService';
 import routes from '../../../config/routes';
 
 const getGreeting = () => {
@@ -15,6 +17,22 @@ const getGreeting = () => {
 export default function DashboardHeader({ student }) {
   const navigation = useNavigation();
   const { user } = useAuth();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const refreshUnreadCount = useCallback(() => {
+    if (!user) return;
+    fetchUnreadCount(user.id).then(({ count }) => setUnreadCount(count));
+  }, [user]);
+
+  useFocusEffect(refreshUnreadCount);
+
+  // Live-updates the badge the instant a push notification arrives while the app
+  // is in the foreground, instead of waiting for the user to leave and re-enter
+  // this screen (which is the only thing useFocusEffect above covers).
+  useEffect(() => {
+    const sub = Notifications.addNotificationReceivedListener(refreshUnreadCount);
+    return () => sub.remove();
+  }, [refreshUnreadCount]);
 
   const firstName = student?.first_name ?? '';
   const lastName = student?.last_name ?? '';
@@ -54,6 +72,13 @@ export default function DashboardHeader({ student }) {
               activeOpacity={0.7}
             >
               <Ionicons name="notifications-outline" size={20} color="#FFFFFF" />
+              {unreadCount > 0 && (
+                <View style={styles.unreadBadge}>
+                  <Text style={styles.unreadBadgeText} numberOfLines={1}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </Text>
+                </View>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -157,6 +182,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+  },
+  unreadBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 3,
+    backgroundColor: '#E4483A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#1a3c5e',
+  },
+  unreadBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   badgeRow: {
     flexDirection: 'row',

@@ -7,11 +7,14 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
+import { useAlert } from '../../context/AlertContext';
+import { useToast } from '../../context/ToastContext';
 import SkeletonBox from '../../components/SkeletonLoader';
 import {
   fetchNotifications,
   markOneAsRead,
   markAllAsRead,
+  deleteNotifications,
 } from './services/notificationService';
 import NotificationCard from './components/NotificationCard';
 import NotificationFilterTabs from './components/NotificationFilterTabs';
@@ -19,6 +22,8 @@ import NotificationFilterTabs from './components/NotificationFilterTabs';
 export default function NotificationInbox() {
   const navigation = useNavigation();
   const { user } = useAuth();
+  const { show: showAlert } = useAlert();
+  const toast = useToast();
   const insets = useSafeAreaInsets();
 
   const [loading, setLoading] = useState(true);
@@ -26,6 +31,8 @@ export default function NotificationInbox() {
   const [notifications, setNotifications] = useState([]);
   const [filter, setFilter] = useState('all');
   const [error, setError] = useState('');
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
 
   const loadData = useCallback(async (isRefresh = false) => {
     if (!user) { setLoading(false); return; }
@@ -37,6 +44,9 @@ export default function NotificationInbox() {
       setError('Could not load notifications. Pull down to retry.');
     } else {
       setNotifications(data);
+      // Jump straight to the Unread tab whenever the inbox is freshly opened (not on a
+      // manual pull-to-refresh, so we don't yank the user away from a tab they picked).
+      if (!isRefresh) setFilter(data.some(n => !n.is_read) ? 'unread' : 'all');
     }
     setLoading(false);
   }, [user]);
@@ -49,12 +59,58 @@ export default function NotificationInbox() {
     setRefreshing(false);
   };
 
+  const toggleSelected = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      if (next.size === 0) setSelectMode(false);
+      return next;
+    });
+  };
+
   const handleCardPress = async (item) => {
+    if (selectMode) { toggleSelected(item.id); return; }
     if (item.is_read) return;
     setNotifications(prev =>
       prev.map(n => n.id === item.id ? { ...n, is_read: true } : n)
     );
     await markOneAsRead(item.id);
+  };
+
+  const handleLongPress = (item) => {
+    setSelectMode(true);
+    setSelectedIds(prev => new Set(prev).add(item.id));
+  };
+
+  const handleCancelSelect = () => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const handleDeleteSelected = () => {
+    const ids = [...selectedIds];
+    showAlert({
+      type: 'warning',
+      title: `Delete ${ids.length} notification${ids.length > 1 ? 's' : ''}?`,
+      message: 'This cannot be undone.',
+      buttons: [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          onPress: async () => {
+            const removed = notifications.filter(n => selectedIds.has(n.id));
+            setNotifications(prev => prev.filter(n => !selectedIds.has(n.id)));
+            handleCancelSelect();
+            const { error: delErr } = await deleteNotifications(ids);
+            if (delErr) {
+              setNotifications(prev => [...prev, ...removed]);
+              toast.show({ type: 'error', title: 'Could not delete', message: delErr.message });
+            }
+          },
+        },
+      ],
+    });
   };
 
   const handleMarkAllRead = async () => {
@@ -72,6 +128,20 @@ export default function NotificationInbox() {
     [notifications, filter]
   );
 
+  const allSelected = displayed.length > 0 && displayed.every(n => selectedIds.has(n.id));
+
+  const handleToggleSelectAll = () => {
+    setSelectedIds(prev => {
+      if (allSelected) {
+        const next = new Set(prev);
+        displayed.forEach(n => next.delete(n.id));
+        if (next.size === 0) setSelectMode(false);
+        return next;
+      }
+      return new Set([...prev, ...displayed.map(n => n.id)]);
+    });
+  };
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
@@ -79,23 +149,29 @@ export default function NotificationInbox() {
         <View style={styles.headerTop}>
           <TouchableOpacity
             style={styles.backBtn}
-            onPress={() => navigation.goBack()}
+            onPress={selectMode ? handleCancelSelect : () => navigation.goBack()}
             activeOpacity={0.7}
           >
-            <Ionicons name="arrow-back" size={20} color="rgba(255,255,255,0.85)" />
+            <Ionicons name={selectMode ? 'close' : 'arrow-back'} size={20} color="rgba(255,255,255,0.85)" />
           </TouchableOpacity>
         </View>
         <Text style={styles.headerLabel}>NOTIFICATIONS</Text>
         <View style={styles.headerBottom}>
-          <Text style={styles.headerTitle}>Inbox</Text>
-          {unreadCount > 0 && (
+          <Text style={styles.headerTitle}>
+            {selectMode ? `${selectedIds.size} selected` : 'Inbox'}
+          </Text>
+          {selectMode ? (
+            <TouchableOpacity onPress={handleToggleSelectAll} activeOpacity={0.7}>
+              <Text style={styles.markAllText}>{allSelected ? 'Deselect all' : 'Select all'}</Text>
+            </TouchableOpacity>
+          ) : unreadCount > 0 && (
             <TouchableOpacity onPress={handleMarkAllRead} activeOpacity={0.7}>
               <Text style={styles.markAllText}>Mark all read</Text>
             </TouchableOpacity>
           )}
         </View>
         <Text style={styles.headerSub}>
-          {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
+          {selectMode ? 'Tap to select more' : unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
         </Text>
       </View>
 
@@ -139,11 +215,35 @@ export default function NotificationInbox() {
             </View>
           ) : (
             displayed.map(item => (
-              <NotificationCard key={item.id} item={item} onPress={handleCardPress} />
+              <NotificationCard
+                key={item.id}
+                item={item}
+                onPress={handleCardPress}
+                onLongPress={handleLongPress}
+                selectMode={selectMode}
+                selected={selectedIds.has(item.id)}
+              />
             ))
           )}
         </View>
       </ScrollView>
+
+      {selectMode && (
+        <View style={[styles.selectBar, { paddingBottom: insets.bottom + 12 }]}>
+          <TouchableOpacity style={styles.selectBarCancel} onPress={handleCancelSelect} activeOpacity={0.7}>
+            <Text style={styles.selectBarCancelText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.selectBarDelete, selectedIds.size === 0 && styles.selectBarDeleteDisabled]}
+            onPress={handleDeleteSelected}
+            disabled={selectedIds.size === 0}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
+            <Text style={styles.selectBarDeleteText}>Delete ({selectedIds.size})</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -162,6 +262,50 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: '#1a3c5e',
+  },
+  selectBar: {
+    flexDirection: 'row',
+    gap: 10,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#EEF4FA',
+    elevation: 8,
+    shadowColor: '#1a3c5e',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+  },
+  selectBarCancel: {
+    flex: 1,
+    borderRadius: 12,
+    paddingVertical: 13,
+    alignItems: 'center',
+    backgroundColor: '#EEF4FA',
+  },
+  selectBarCancelText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#5A7490',
+  },
+  selectBarDelete: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 6,
+    borderRadius: 12,
+    paddingVertical: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1a3c5e',
+  },
+  selectBarDeleteDisabled: {
+    backgroundColor: '#8BA4BC',
+  },
+  selectBarDeleteText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   header: {
     backgroundColor: '#1a3c5e',
