@@ -51,7 +51,9 @@
           "cameraPermission": "GRADUS needs access to your camera for profile picture upload."
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      "expo-splash-screen",
+      "expo-status-bar"
     ],
     "extra": {
       "eas": {
