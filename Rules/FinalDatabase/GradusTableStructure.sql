@@ -131,10 +131,10 @@ CREATE TABLE public.sections (
   semester smallint NOT NULL CHECK (semester = ANY (ARRAY[1, 2])),
   capacity integer NOT NULL DEFAULT 40 CHECK (capacity > 0),
   enrolled_count integer NOT NULL DEFAULT 0 CHECK (enrolled_count >= 0),
-  saturday_blocked boolean NOT NULL DEFAULT false,
   is_active boolean NOT NULL DEFAULT true,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  blocked_days ARRAY NOT NULL DEFAULT '{}'::smallint[] CHECK (blocked_days <@ ARRAY[1::smallint, 2::smallint, 3::smallint, 4::smallint, 5::smallint, 6::smallint]),
   CONSTRAINT sections_pkey PRIMARY KEY (id),
   CONSTRAINT sections_term_id_fkey FOREIGN KEY (term_id) REFERENCES public.academic_terms(id),
   CONSTRAINT sections_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id),
@@ -149,6 +149,7 @@ CREATE TABLE public.venues (
   is_active boolean NOT NULL DEFAULT true,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  lecture_fallback_enabled boolean NOT NULL DEFAULT false,
   CONSTRAINT venues_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.venue_program_restrictions (
@@ -158,7 +159,10 @@ CREATE TABLE public.venue_program_restrictions (
   is_allowed boolean NOT NULL DEFAULT true,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  restriction_type text NOT NULL DEFAULT 'lecture'::text CHECK (restriction_type = ANY (ARRAY['lecture'::text, 'pe'::text])),
+  term_id uuid NOT NULL,
   CONSTRAINT venue_program_restrictions_pkey PRIMARY KEY (id),
+  CONSTRAINT venue_program_restrictions_term_id_fkey FOREIGN KEY (term_id) REFERENCES public.academic_terms(id),
   CONSTRAINT venue_program_restrictions_venue_id_fkey FOREIGN KEY (venue_id) REFERENCES public.venues(id),
   CONSTRAINT venue_program_restrictions_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id)
 );
@@ -184,7 +188,10 @@ CREATE TABLE public.teacher_subject_assignments (
   assigned_by uuid,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  max_sections integer CHECK (max_sections IS NULL OR max_sections > 0),
+  preferred_venue_id uuid,
   CONSTRAINT teacher_subject_assignments_pkey PRIMARY KEY (id),
+  CONSTRAINT teacher_subject_assignments_preferred_venue_id_fkey FOREIGN KEY (preferred_venue_id) REFERENCES public.venues(id),
   CONSTRAINT teacher_subject_assignments_teacher_id_fkey FOREIGN KEY (teacher_id) REFERENCES public.teachers(id),
   CONSTRAINT teacher_subject_assignments_subject_id_fkey FOREIGN KEY (subject_id) REFERENCES public.subjects(id),
   CONSTRAINT teacher_subject_assignments_term_id_fkey FOREIGN KEY (term_id) REFERENCES public.academic_terms(id),
@@ -407,6 +414,7 @@ CREATE TABLE public.grade_components (
   a3_score numeric,
   a4_score numeric,
   a5_score numeric,
+  incentive_points numeric NOT NULL DEFAULT 0,
   CONSTRAINT grade_components_pkey PRIMARY KEY (id),
   CONSTRAINT grade_components_class_offering_id_fkey FOREIGN KEY (class_offering_id) REFERENCES public.class_offerings(id),
   CONSTRAINT grade_components_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id),
@@ -429,6 +437,8 @@ CREATE TABLE public.grades (
   posted_by uuid,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  midterm_incentive_points numeric NOT NULL DEFAULT 0,
+  final_incentive_points numeric NOT NULL DEFAULT 0,
   CONSTRAINT grades_pkey PRIMARY KEY (id),
   CONSTRAINT grades_class_offering_id_fkey FOREIGN KEY (class_offering_id) REFERENCES public.class_offerings(id),
   CONSTRAINT grades_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id),
@@ -454,13 +464,14 @@ CREATE TABLE public.academic_honors (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   student_id uuid NOT NULL,
   term_id uuid NOT NULL,
-  honor_type text NOT NULL CHECK (honor_type = ANY (ARRAY['presidents_list'::text, 'deans_list'::text])),
+  honor_type text NOT NULL CHECK (honor_type = ANY (ARRAY['presidents_list'::text, 'deans_list'::text, 'top25_university'::text])),
   gwa numeric NOT NULL,
   certificate_url text,
   awarded_by uuid,
   awarded_at timestamp with time zone NOT NULL DEFAULT now(),
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  rank integer,
   CONSTRAINT academic_honors_pkey PRIMARY KEY (id),
   CONSTRAINT academic_honors_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id),
   CONSTRAINT academic_honors_term_id_fkey FOREIGN KEY (term_id) REFERENCES public.academic_terms(id),
@@ -611,4 +622,41 @@ CREATE TABLE public.grade_period_settings (
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT grade_period_settings_pkey PRIMARY KEY (class_offering_id, period),
   CONSTRAINT grade_period_settings_class_offering_id_fkey FOREIGN KEY (class_offering_id) REFERENCES public.class_offerings(id)
+);
+CREATE TABLE public.section_day_cap_rules (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  term_id uuid NOT NULL,
+  program_id uuid NOT NULL,
+  year_level integer NOT NULL CHECK (year_level >= 1 AND year_level <= 4),
+  max_days_per_week integer NOT NULL CHECK (max_days_per_week >= 1 AND max_days_per_week <= 6),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT section_day_cap_rules_pkey PRIMARY KEY (id),
+  CONSTRAINT section_day_cap_rules_term_id_fkey FOREIGN KEY (term_id) REFERENCES public.academic_terms(id),
+  CONSTRAINT section_day_cap_rules_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id)
+);
+CREATE TABLE public.attendance_meeting_notifications (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  class_offering_id uuid NOT NULL,
+  student_id uuid NOT NULL,
+  meeting_date date NOT NULL,
+  period text NOT NULL CHECK (period = ANY (ARRAY['midterm'::text, 'final'::text])),
+  notified_value numeric NOT NULL,
+  notified_at timestamp with time zone NOT NULL DEFAULT now(),
+  notified_by uuid,
+  CONSTRAINT attendance_meeting_notifications_pkey PRIMARY KEY (id),
+  CONSTRAINT attendance_meeting_notifications_class_offering_id_fkey FOREIGN KEY (class_offering_id) REFERENCES public.class_offerings(id),
+  CONSTRAINT attendance_meeting_notifications_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id)
+);
+CREATE TABLE public.grade_finalize_notifications (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  class_offering_id uuid NOT NULL,
+  student_id uuid NOT NULL,
+  item_key text NOT NULL,
+  notified_value text NOT NULL,
+  notified_at timestamp with time zone NOT NULL DEFAULT now(),
+  notified_by uuid,
+  CONSTRAINT grade_finalize_notifications_pkey PRIMARY KEY (id),
+  CONSTRAINT grade_finalize_notifications_class_offering_id_fkey FOREIGN KEY (class_offering_id) REFERENCES public.class_offerings(id),
+  CONSTRAINT grade_finalize_notifications_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id)
 );
