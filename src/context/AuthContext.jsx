@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { supabase } from '../config/supabase';
+import { registerForPushNotificationsAsync, savePushToken } from '../services/core/pushNotificationService';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -60,6 +61,16 @@ export function AuthProvider({ children }) {
 
     setProfile(data ?? null);
     setIsLoading(false);
+
+    try {
+      const token = await registerForPushNotificationsAsync();
+      if (token) {
+        const { error } = await savePushToken(user.id, token);
+        if (error) console.warn('[AuthContext] savePushToken failed (non-fatal):', error.message);
+      }
+    } catch (err) {
+      console.warn('[AuthContext] push registration failed (non-fatal):', err.message);
+    }
   };
 
   const signInWithGoogle = async () => {

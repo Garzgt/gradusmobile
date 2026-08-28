@@ -7,6 +7,7 @@ CREATE TABLE public.profiles (
   full_name text NOT NULL,
   app_role USER-DEFINED NOT NULL,
   avatar_url text,
+  push_token text,
   is_active boolean NOT NULL DEFAULT true,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
