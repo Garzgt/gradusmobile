@@ -50,7 +50,8 @@
           "photosPermission": "GRADUS needs access to your photos for profile picture upload.",
           "cameraPermission": "GRADUS needs access to your camera for profile picture upload."
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "extra": {
       "eas": {
