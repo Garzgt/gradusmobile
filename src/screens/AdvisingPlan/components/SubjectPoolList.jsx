@@ -31,11 +31,14 @@ function groupByTeacher(entries) {
         teacherId: id,
         teacherName: getTeacherName(entry.teachers),
         entries: [],
+        departments: new Set(),
       };
     }
     map[id].entries.push(entry);
+    const deptCode = entry.sections?.programs?.code;
+    if (deptCode) map[id].departments.add(deptCode);
   });
-  return Object.values(map);
+  return Object.values(map).map((t) => ({ ...t, departments: Array.from(t.departments) }));
 }
 
 function SubjectRow({ subject, subjectKey, isSelected, onToggle, entries, chosenTeacherId, onTeacherSelect }) {
@@ -81,7 +84,14 @@ function SubjectRow({ subject, subjectKey, isSelected, onToggle, entries, chosen
                     <View style={[styles.teacherRadio, isChosen && styles.teacherRadioChosen]}>
                       {isChosen && <View style={styles.teacherRadioDot} />}
                     </View>
-                    <Text style={styles.teacherName}>{t.teacherName}</Text>
+                    <View style={styles.teacherNameCol}>
+                      <Text style={styles.teacherName}>{t.teacherName}</Text>
+                      {t.departments.length > 0 && (
+                        <View style={styles.teacherDeptBadge}>
+                          <Text style={styles.teacherDeptText}>{t.departments.join(' / ')}</Text>
+                        </View>
+                      )}
+                    </View>
                   </TouchableOpacity>
                 );
               })

@@ -154,11 +154,27 @@ export default StyleSheet.create({
 		borderRadius: 4,
 		backgroundColor: '#2A7AB6',
 	},
+	teacherNameCol: {
+		flex: 1,
+		gap: 3,
+	},
 	teacherName: {
 		fontSize: 13,
 		fontWeight: '600',
 		color: '#1A2A3A',
-		flex: 1,
+	},
+	teacherDeptBadge: {
+		alignSelf: 'flex-start',
+		backgroundColor: '#EBF4FC',
+		borderRadius: 5,
+		paddingHorizontal: 5,
+		paddingVertical: 1,
+	},
+	teacherDeptText: {
+		fontSize: 9,
+		fontWeight: '700',
+		color: '#2A7AB6',
+		letterSpacing: 0.3,
 	},
 	teacherNoSchedule: {
 		flexDirection: 'row',

@@ -34,10 +34,8 @@ export function buildEvaluationScanScript() {
 		headerCells.forEach((cell) => {
 			const colspan = parseInt(cell.getAttribute('colspan') || '1', 10);
 			const label = cell.innerText.trim().toLowerCase();
-			for (let i = 0; i < colspan; i += 1) {
-				headerMap[label] = colIndex;
-				colIndex += 1;
-			}
+			headerMap[label] = colIndex;
+			colIndex += colspan;
 		});
 
 		const expandRowCells = (row) => {
