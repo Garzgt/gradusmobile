@@ -118,12 +118,16 @@ function buildCertificateHtml({ studentName, item, termLabel, logoLeft, gradusLo
     display:flex; align-items:center; justify-content:space-between;
     padding:0 22pt;
   }
-  .header-left { display:flex; align-items:center; gap:5pt; }
+  .header-left { display:flex; align-items:center; gap:6pt; }
   .header-left-badge {
-    width:26pt; height:26pt; border-radius:50%; overflow:hidden;
+    width:36pt; height:36pt; border-radius:50%; overflow:hidden;
     background:#FFFFFF; display:flex; align-items:center; justify-content:center;
   }
   .header-left-badge img { width:140%; height:140%; object-fit:cover; }
+  .header-left-badge--transparent {
+    background:transparent;
+  }
+  .header-left-badge--transparent img { width:90%; height:90%; object-fit:contain; }
   .header-center { position:absolute; left:0; right:0; top:50%; transform:translateY(-50%); text-align:center; }
   .uni-name { font-size:12pt; font-weight:bold; color:#FFFFFF; letter-spacing:0.5pt; }
   .uni-campus { font-size:9pt; color:rgba(255,255,255,0.85); margin-top:1pt; }
@@ -153,9 +157,9 @@ function buildCertificateHtml({ studentName, item, termLabel, logoLeft, gradusLo
     position:absolute; inset:0;
     background:linear-gradient(to bottom,
       rgba(253,250,243,1) 0%,
-      rgba(253,250,243,0.6) 22%,
-      rgba(122,31,43,0.3) 50%,
-      rgba(122,31,43,0.62) 100%);
+      rgba(253,250,243,0.8) 45%,
+      rgba(122,31,43,0.12) 68%,
+      rgba(122,31,43,0.5) 100%);
   }
   .content {
     position:absolute; top:0; left:0; right:0; height:500pt; z-index:2; overflow:hidden;
@@ -188,7 +192,7 @@ function buildCertificateHtml({ studentName, item, termLabel, logoLeft, gradusLo
   <div class="header-row">
     <div class="header-left">
       <div class="header-left-badge"><img src="data:image/jpeg;base64,${logoLeft}" /></div>
-      <div class="header-left-badge"><img src="data:image/png;base64,${gradusLogo}" /></div>
+      <div class="header-left-badge header-left-badge--transparent"><img src="data:image/png;base64,${gradusLogo}" /></div>
       <div class="header-left-badge"><img src="data:image/jpeg;base64,${logoRight}" /></div>
     </div>
     <div class="header-center">
@@ -281,16 +285,15 @@ export async function getOrGenerateCertificateUrl(user, item) {
   }
 }
 
-export async function openCertificate({ url, localUri } = {}) {
-  let fileUri = localUri;
+// The OS only allows one share sheet in flight at a time for the whole app, but each
+// HonorCard tracks its own "generating" state independently, so two cards' buttons
+// tapped close together can each call Sharing.shareAsync before the first has resolved,
+// which throws "Another share request is being processed now." Chaining every call
+// through this single module-level promise serializes them so a second call simply
+// waits for the first share sheet to be dismissed instead of erroring.
+let shareChain = Promise.resolve();
 
-  if (!fileUri) {
-    if (!url) return;
-    const dest = `${FileSystem.cacheDirectory}certificate-${Date.now()}.pdf`;
-    const { uri } = await FileSystem.downloadAsync(url, dest);
-    fileUri = uri;
-  }
-
+async function shareCertificateFile(fileUri) {
   const canShare = await Sharing.isAvailableAsync();
   if (canShare) {
     await Sharing.shareAsync(fileUri, {
@@ -301,4 +304,20 @@ export async function openCertificate({ url, localUri } = {}) {
   } else {
     await Print.printAsync({ uri: fileUri });
   }
+}
+
+export function openCertificate({ url, localUri } = {}) {
+  const run = async () => {
+    let fileUri = localUri;
+    if (!fileUri) {
+      if (!url) return;
+      const dest = `${FileSystem.cacheDirectory}certificate-${Date.now()}.pdf`;
+      const { uri } = await FileSystem.downloadAsync(url, dest);
+      fileUri = uri;
+    }
+    await shareCertificateFile(fileUri);
+  };
+
+  shareChain = shareChain.then(run, run);
+  return shareChain;
 }
