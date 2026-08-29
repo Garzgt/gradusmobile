@@ -58,9 +58,19 @@ async function loadAssetBase64(assetModule) {
   return FileSystem.readAsStringAsync(asset.localUri, { encoding: 'base64' });
 }
 
+function nameFontSizeFor(name) {
+  const BASE_LEN = 16;
+  const MAX_SIZE = 72;
+  const MIN_SIZE = 38;
+  if (name.length <= BASE_LEN) return MAX_SIZE;
+  const scaled = Math.round(MAX_SIZE * (BASE_LEN / name.length));
+  return Math.max(MIN_SIZE, scaled);
+}
+
 function buildCertificateHtml({ studentName, item, termLabel, logoLeft, gradusLogo, logoRight, watermark, nameFont }) {
   const achievementText = buildAchievementText(item, termLabel);
   const dateLabel = formatAwardedDate(item.awarded_at);
+  const nameFontSize = nameFontSizeFor(studentName);
 
   return `<!DOCTYPE html>
 <html>
@@ -157,7 +167,11 @@ function buildCertificateHtml({ studentName, item, termLabel, logoLeft, gradusLo
     margin-top:2pt;
   }
   .presented { font-size:11pt; color:#5A4632; letter-spacing:1.5pt; margin-top:16pt; }
-  .name { font-family:'CertScript',cursive; font-size:72pt; color:#1A1A1A; line-height:1; margin-top:4pt; }
+  .name {
+    font-family:'CertScript',cursive; font-size:${nameFontSize}pt; color:#1A1A1A;
+    line-height:1; margin-top:4pt; max-width:500pt;
+    white-space:normal; overflow-wrap:break-word;
+  }
   .achievement { font-size:14pt; color:#333333; max-width:620pt; margin-top:14pt; line-height:1.6; }
   .given { font-size:12.5pt; color:#5A4632; max-width:620pt; margin-top:16pt; }
   .sig-block {
