@@ -120,7 +120,14 @@ export default function MyRecognition() {
             </View>
           ) : (
             honors.map(item => (
-              <HonorCard key={item.id} item={item} />
+              <HonorCard
+                key={item.id}
+                item={item}
+                user={user}
+                onCertificateGenerated={(id, url) => {
+                  setHonors(prev => prev.map(h => (h.id === id ? { ...h, certificate_url: url } : h)));
+                }}
+              />
             ))
           )}
         </View>

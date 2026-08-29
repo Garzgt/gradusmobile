@@ -15,6 +15,7 @@ export async function fetchMyHonors(userId) {
       id,
       honor_type,
       gwa,
+      rank,
       awarded_at,
       certificate_url,
       term:academic_terms!term_id (

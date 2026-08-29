@@ -1,6 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useToast } from '../../../context/ToastContext';
+import { getOrGenerateCertificateUrl, openCertificate } from '../services/certificateService';
 
 const HONOR_CONFIG = {
   presidents_list: {
@@ -29,8 +31,31 @@ function termLabel(term) {
   return `${sem} ${term.school_year}`;
 }
 
-export default function HonorCard({ item }) {
+export default function HonorCard({ item, user, onCertificateGenerated }) {
   const config = HONOR_CONFIG[item.honor_type] ?? HONOR_CONFIG.deans_list;
+  const toast = useToast();
+  const [generating, setGenerating] = useState(false);
+
+  const handleCertificatePress = async () => {
+    if (generating) return;
+    if (item.certificate_url) {
+      openCertificate({ url: item.certificate_url });
+      return;
+    }
+    setGenerating(true);
+    const { url, localUri, error } = await getOrGenerateCertificateUrl(user, item);
+    setGenerating(false);
+    if (error || !url) {
+      toast.show({
+        type: 'error',
+        title: 'Could not generate certificate',
+        message: error?.message || 'Please try again.',
+      });
+      return;
+    }
+    onCertificateGenerated?.(item.id, url);
+    openCertificate({ url, localUri });
+  };
 
   return (
     <View style={styles.card}>
@@ -68,6 +93,30 @@ export default function HonorCard({ item }) {
           </View>
         </View>
       </View>
+
+      <TouchableOpacity
+        style={styles.certBtn}
+        onPress={handleCertificatePress}
+        disabled={generating}
+        activeOpacity={0.8}
+      >
+        {generating ? (
+          <ActivityIndicator size="small" color="#2A7AB6" />
+        ) : (
+          <Ionicons
+            name={item.certificate_url ? 'document-text-outline' : 'ribbon-outline'}
+            size={15}
+            color="#2A7AB6"
+          />
+        )}
+        <Text style={styles.certBtnText}>
+          {generating
+            ? 'Generating…'
+            : item.certificate_url
+              ? 'View Certificate'
+              : 'Generate Certificate'}
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -156,5 +205,22 @@ const styles = StyleSheet.create({
     width: 1,
     height: 36,
     backgroundColor: '#EEF4FA',
+  },
+  certBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    marginTop: 2,
+    paddingVertical: 11,
+    borderRadius: 10,
+    backgroundColor: '#EBF4FC',
+  },
+  certBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#2A7AB6',
   },
 });
