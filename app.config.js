@@ -7,11 +7,6 @@ module.exports = {
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "light",
-    splash: {
-      image: "./assets/splash-icon.png",
-      resizeMode: "contain",
-      backgroundColor: "#1a3c5e",
-    },
     ios: {
       supportsTablet: true,
       bundleIdentifier: "com.psu.gradus",
@@ -54,7 +49,15 @@ module.exports = {
         },
       ],
       "expo-sharing",
-      "expo-splash-screen",
+      [
+        "expo-splash-screen",
+        {
+          image: "./assets/splash-icon.png",
+          imageWidth: 200,
+          resizeMode: "contain",
+          backgroundColor: "#1a3c5e",
+        },
+      ],
       "expo-status-bar",
     ],
     extra: {
