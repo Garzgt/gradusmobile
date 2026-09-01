@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../context/AuthContext';
+import { useAlert } from '../../context/AlertContext';
 import { supabase } from '../../config/supabase';
 import routes from '../../config/routes';
 import SkeletonBox from '../../components/SkeletonLoader';
@@ -37,6 +38,7 @@ const formatTimestamp = (value) => {
 export default function BuildAdvisingPlan() {
   const navigation = useNavigation();
   const { user } = useAuth();
+  const alert = useAlert();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -49,7 +51,6 @@ export default function BuildAdvisingPlan() {
   const [teacherSelections, setTeacherSelections] = useState({});
   const [error, setError] = useState('');
   const hasLoadedRef = useRef(false);
-  const hasAutoSelectedRef = useRef(false);
 
   const loadData = useCallback(async (isRefresh = false) => {
     if (!user) {
@@ -169,18 +170,6 @@ export default function BuildAdvisingPlan() {
     });
   }, [allEligible]);
 
-  // Auto-select all back subjects on first load (they are priority).
-  useEffect(() => {
-    if (hasAutoSelectedRef.current) return;
-    if (!hasLoadedRef.current) return;
-    if (eligibleBackWithKeys.length === 0) return;
-    hasAutoSelectedRef.current = true;
-    setSelectedKeys((prev) => {
-      if (prev.size > 0) return prev; // respect restored selection from storage
-      return new Set(eligibleBackWithKeys.map((s) => s.key));
-    });
-  }, [eligibleBackWithKeys]);
-
   // Fetch published schedule entries for all eligible subjects whenever the list changes.
   const eligibleCodesKey = useMemo(
     () => allEligible.map((s) => s.subjectCode).sort().join(','),
@@ -212,8 +201,19 @@ export default function BuildAdvisingPlan() {
     [allEligible, selectedKeys]
   );
 
+  // A teacher choice is only required for subjects that actually have schedule
+  // options to choose from — a subject with zero published entries can't be
+  // resolved by picking a teacher either way, so it shouldn't block Generate.
+  const allTeachersChosen = useMemo(
+    () => selectedSubjects
+      .filter((subject) => (availableEntries[subject.subjectCode]?.length ?? 0) > 0)
+      .every((subject) => Boolean(teacherSelections[subject.key]?.teacherId)),
+    [selectedSubjects, availableEntries, teacherSelections]
+  );
+  const canGeneratePlan = selectedSubjects.length > 0 && allTeachersChosen;
+
   const handleGeneratePlan = useCallback(async () => {
-    if (!selectedSubjects.length || !activeTerm?.id) return;
+    if (!canGeneratePlan || !activeTerm?.id) return;
     setGenerating(true);
     setError('');
     try {
@@ -251,7 +251,29 @@ export default function BuildAdvisingPlan() {
       setError('Failed to generate plan. Please try again.');
     }
     setGenerating(false);
-  }, [selectedSubjects, activeTerm, navigation, termLabel, teacherSelections, availableEntries]);
+  }, [canGeneratePlan, selectedSubjects, activeTerm, navigation, termLabel, teacherSelections, availableEntries]);
+
+  const resetPlan = useCallback(async () => {
+    await AsyncStorage.multiRemove([SCAN_STORAGE_KEY, SELECTION_STORAGE_KEY]);
+    setScanData(null);
+    setSelectedKeys(new Set());
+    setTeacherSelections({});
+    setAvailableEntries({});
+    setSelectionSavedAt('');
+    setError('');
+  }, []);
+
+  const handleResetPress = useCallback(() => {
+    alert.show({
+      type: 'warning',
+      title: 'Reset and Scan Again?',
+      message: 'This clears your scanned evaluation and selected subjects so you can scan your evaluation again from scratch.',
+      buttons: [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Reset', onPress: resetPlan },
+      ],
+    });
+  }, [alert, resetPlan]);
 
   useEffect(() => {
     if (!hasLoadedRef.current) return;
@@ -274,6 +296,14 @@ export default function BuildAdvisingPlan() {
     && eligibleCurrentWithKeys.length === 0
     && blocked.length === 0
     && !missingSetup;
+  // A student with zero back/blocked subjects (but still has normal current-term
+  // subjects to take) is regular — this tool exists to build a catch-up plan for
+  // irregular students, so a regular student shouldn't be using it at all.
+  const isRegularStudent = hasScan
+    && !missingSetup
+    && eligibleBackWithKeys.length === 0
+    && blocked.length === 0
+    && eligibleCurrentWithKeys.length > 0;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -318,6 +348,15 @@ export default function BuildAdvisingPlan() {
                 <Text style={styles.scanCountText}>{scanCount}</Text>
                 <Text style={styles.scanCountLabel}>scanned</Text>
               </View>
+            )}
+            {hasScan && (
+              <TouchableOpacity
+                style={styles.resetBtn}
+                onPress={handleResetPress}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="refresh-outline" size={15} color="#5A7A9A" />
+              </TouchableOpacity>
             )}
             <TouchableOpacity
               style={styles.viewerBtn}
@@ -370,6 +409,18 @@ export default function BuildAdvisingPlan() {
               <Text style={styles.emptyButtonText}>Open Evaluation Viewer</Text>
             </TouchableOpacity>
           </View>
+        ) : isRegularStudent ? (
+          /* Regular student: no back/blocked subjects — this tool is for building an
+             irregular student's catch-up plan, not for a normal on-track enrollment. */
+          <View style={styles.emptyCard}>
+            <Ionicons name="checkmark-circle-outline" size={28} color="#1a6e4a" />
+            <Text style={styles.emptyTitle}>You're on the regular track</Text>
+            <Text style={styles.emptyText}>
+              Your evaluation shows no incomplete subjects from earlier terms. This tool is
+              for building a catch-up plan for irregular students — since you're on
+              track, please enroll through the standard process instead.
+            </Text>
+          </View>
         ) : (
           <>
             {/* Subject list card */}
@@ -404,9 +455,9 @@ export default function BuildAdvisingPlan() {
 
             {/* Generate button */}
             <TouchableOpacity
-              style={[styles.generateBtn, (selectedCount === 0 || generating) && styles.generateBtnDisabled]}
+              style={[styles.generateBtn, (!canGeneratePlan || generating) && styles.generateBtnDisabled]}
               onPress={handleGeneratePlan}
-              disabled={selectedCount === 0 || generating}
+              disabled={!canGeneratePlan || generating}
               activeOpacity={0.85}
             >
               {generating ? (
@@ -417,9 +468,11 @@ export default function BuildAdvisingPlan() {
               <Text style={styles.generateBtnText}>
                 {generating
                   ? 'Generating…'
-                  : selectedCount > 0
-                    ? `Generate Plan · ${selectedCount} subject${selectedCount !== 1 ? 's' : ''}`
-                    : 'Generate Plan'}
+                  : selectedCount === 0
+                    ? 'Generate Plan'
+                    : !allTeachersChosen
+                      ? 'Choose a teacher for each subject'
+                      : `Generate Plan · ${selectedCount} subject${selectedCount !== 1 ? 's' : ''}`}
               </Text>
             </TouchableOpacity>
           </>
@@ -512,6 +565,14 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: 10,
     backgroundColor: '#EBF4FC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resetBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#F2F6FA',
     alignItems: 'center',
     justifyContent: 'center',
   },
