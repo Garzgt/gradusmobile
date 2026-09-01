@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import GradeStatusBadge from './GradeStatusBadge';
+import { formatCreditUnits } from '../services/gradeService';
 import styles from './SubjectCard.styles';
 
 const BANNER_ICONS = [
@@ -37,7 +38,7 @@ export default function SubjectCard({ grade, onPress }) {
         <View style={styles.metaRow}>
           <View style={styles.unitChip}>
             <Ionicons name="school-outline" size={11} color="#2A7AB6" />
-            <Text style={styles.unitText}>{subject?.credit_units ?? '—'} units</Text>
+            <Text style={styles.unitText}>{formatCreditUnits(subject)} units</Text>
           </View>
           {teacher && (
             <Text style={styles.teacherText} numberOfLines={1}>

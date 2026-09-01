@@ -36,9 +36,9 @@ export default StyleSheet.create({
     letterSpacing: 1.5,
   },
   gwaNumber: {
-    fontSize: 38,
+    fontSize: 30,
     fontWeight: '800',
-    lineHeight: 44,
+    lineHeight: 36,
     letterSpacing: -1,
   },
   description: {

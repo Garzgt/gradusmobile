@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import GradeStatusBadge from './GradeStatusBadge';
+import { formatCreditUnits } from '../services/gradeService';
 import styles from './GradeCard.styles';
 
 export default function GradeCard({ grade, onPress }) {
@@ -26,7 +27,7 @@ export default function GradeCard({ grade, onPress }) {
           <GradeStatusBadge remarks={remarks} />
         </View>
         <Text style={styles.title} numberOfLines={2}>{subject?.title ?? '—'}</Text>
-        <Text style={styles.units}>{subject?.credit_units ?? '—'} units</Text>
+        <Text style={styles.units}>{formatCreditUnits(subject)} units</Text>
       </View>
       <View style={styles.right}>
         <Text style={gradeStyle}>{gradeDisplay}</Text>

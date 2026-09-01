@@ -12,7 +12,7 @@ function getGwaColor(gwa) {
 }
 
 export default function GwaSummaryCard({ gwa, termLabel, subjectCount, passedCount }) {
-  const display = gwa != null ? parseFloat(gwa).toFixed(2) : '—';
+  const display = gwa != null ? parseFloat(gwa).toFixed(4) : '—';
   const color = getGwaColor(gwa);
 
   return (

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { formatCreditUnits } from '../../../Grades/services/gradeService';
 
 export default function EnrolledSubjectCard({ item }) {
   const { subject, section, teacher } = item;
@@ -8,7 +9,7 @@ export default function EnrolledSubjectCard({ item }) {
   const teacherName = teacher
     ? `${teacher.first_name} ${teacher.last_name}`
     : 'TBA';
-  const units = parseFloat(subject?.credit_units) || 0;
+  const units = formatCreditUnits(subject);
   const hasLab = parseFloat(subject?.lab_units) > 0;
 
   return (
@@ -26,7 +27,7 @@ export default function EnrolledSubjectCard({ item }) {
               </View>
             )}
             <View style={styles.unitsBadge}>
-              <Text style={styles.unitsText}>{units} {units === 1 ? 'unit' : 'units'}</Text>
+              <Text style={styles.unitsText}>{units} {String(units) === '1' ? 'unit' : 'units'}</Text>
             </View>
           </View>
         </View>

@@ -88,7 +88,7 @@ export default function HonorCard({ item, user, onCertificateGenerated }) {
           <View style={[styles.infoItem, { alignItems: 'flex-end' }]}>
             <Text style={styles.infoLabel}>GWA</Text>
             <Text style={[styles.gwaValue, { color: config.color }]}>
-              {parseFloat(item.gwa).toFixed(2)}
+              {parseFloat(item.gwa).toFixed(4)}
             </Text>
           </View>
         </View>

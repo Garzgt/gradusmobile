@@ -5,7 +5,7 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 import { Ionicons } from '@expo/vector-icons';
 import SkeletonBox from '../../components/SkeletonLoader';
 import GradeStatusBadge from './components/GradeStatusBadge';
-import { fetchGradeDetail } from './services/gradeService';
+import { fetchGradeDetail, formatCreditUnits } from './services/gradeService';
 import styles from './SubjectGradeDetail.styles';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -434,7 +434,7 @@ export default function SubjectGradeDetail() {
             {/* Subject info card */}
             <View style={styles.infoCard}>
               <InfoRow label="Subject Code" value={subject?.subject_code} />
-              <InfoRow label="Credit Units"  value={subject?.credit_units} />
+              <InfoRow label="Credit Units"  value={formatCreditUnits(subject)} />
               <InfoRow label="Teacher" value={teacher ? `${teacher.first_name} ${teacher.last_name}` : null} />
               <InfoRow label="Section" value={data?.section?.section_code} />
               <InfoRow label="Term"    value={formatTermLabel(data?.term)} last />

@@ -180,6 +180,18 @@ export async function fetchGradeDetail(classOfferingId, studentId) {
   };
 }
 
+// "2(1)" for a subject with both lecture and lab units (e.g. 2 lec + 1 lab),
+// plain "3" for lecture-only subjects (or PE, which has no lab component) —
+// matches the lec(lab) notation already used on the printed Pre-Registration Form.
+export function formatCreditUnits(subject) {
+  const lec = subject?.lec_units;
+  const lab = subject?.lab_units;
+  if (lec != null && lab != null && Number(lab) > 0) {
+    return `${lec}(${lab})`;
+  }
+  return subject?.credit_units ?? '—';
+}
+
 export function computeTermGwa(grades) {
   const eligible = grades.filter(g => g.equivalent != null && g.remarks !== 'DROPPED');
   if (!eligible.length) return null;
@@ -189,5 +201,5 @@ export function computeTermGwa(grades) {
     const u = parseFloat(g.subject?.credit_units) || 0;
     return s + g.equivalent * u;
   }, 0);
-  return (weighted / totalUnits).toFixed(2);
+  return (weighted / totalUnits).toFixed(4);
 }
