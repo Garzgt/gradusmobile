@@ -7,10 +7,10 @@ CREATE TABLE public.profiles (
   full_name text NOT NULL,
   app_role USER-DEFINED NOT NULL,
   avatar_url text,
-  push_token text,
   is_active boolean NOT NULL DEFAULT true,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  push_token text,
   CONSTRAINT profiles_pkey PRIMARY KEY (user_id),
   CONSTRAINT profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
 );
@@ -130,8 +130,6 @@ CREATE TABLE public.sections (
   section_code text NOT NULL,
   year_level integer NOT NULL CHECK (year_level >= 1 AND year_level <= 4),
   semester smallint NOT NULL CHECK (semester = ANY (ARRAY[1, 2])),
-  capacity integer NOT NULL DEFAULT 40 CHECK (capacity > 0),
-  enrolled_count integer NOT NULL DEFAULT 0 CHECK (enrolled_count >= 0),
   is_active boolean NOT NULL DEFAULT true,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
@@ -146,7 +144,6 @@ CREATE TABLE public.venues (
   name text NOT NULL UNIQUE,
   venue_type USER-DEFINED NOT NULL,
   venue_subtype text,
-  capacity integer CHECK (capacity IS NULL OR capacity > 0),
   is_active boolean NOT NULL DEFAULT true,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),

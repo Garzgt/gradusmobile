@@ -7,7 +7,7 @@ import routes from '../../../config/routes';
 import SkeletonBox from '../../../components/SkeletonLoader';
 import { computeTermGwa } from '../../Grades/services/gradeService';
 
-export default function GradeSnapshotCard({ studentId }) {
+export default function GradeSnapshotCard({ studentId, refreshKey }) {
   const navigation = useNavigation();
   const [gwa, setGwa] = useState(null);
   const [termLabel, setTermLabel] = useState('');
@@ -15,6 +15,7 @@ export default function GradeSnapshotCard({ studentId }) {
 
   useEffect(() => {
     if (!studentId) { setLoading(false); return; }
+    setLoading(true);
 
     async function load() {
       const { data: term } = await supabase
@@ -28,34 +29,47 @@ export default function GradeSnapshotCard({ studentId }) {
       const sem = term.semester === 1 ? '1st Sem' : '2nd Sem';
       setTermLabel(`${sem} ${term.school_year}`);
 
-      const { data: grades } = await supabase
-        .from('grades')
-        .select(`
-          equivalent_grade,
-          remarks,
-          class_offering:class_offerings!class_offering_id!inner (
-            term_id,
-            subject:subjects!subject_id ( credit_units )
-          )
-        `)
+      // Only count grades tied to a still-active enrollment — a grade can
+      // outlive a class_students row that was later deactivated/removed.
+      const { data: activeEnrollments } = await supabase
+        .from('class_students')
+        .select('class_offering_id')
         .eq('student_id', studentId)
-        .eq('class_offering.term_id', term.id)
-        .in('status', ['posted', 'approved']);
+        .eq('is_active', true);
 
-      if (grades?.length) {
-        const termGrades = grades.map(g => ({
-          equivalent: g.equivalent_grade != null ? Number(g.equivalent_grade) : null,
-          remarks: g.remarks,
-          subject: g.class_offering?.subject,
-        }));
-        const result = computeTermGwa(termGrades);
-        if (result) setGwa(result);
+      const activeOfferingIds = (activeEnrollments ?? []).map(e => e.class_offering_id);
+
+      if (activeOfferingIds.length) {
+        const { data: grades } = await supabase
+          .from('grades')
+          .select(`
+            equivalent_grade,
+            remarks,
+            class_offering:class_offerings!class_offering_id!inner (
+              term_id,
+              subject:subjects!subject_id ( credit_units )
+            )
+          `)
+          .eq('student_id', studentId)
+          .eq('class_offering.term_id', term.id)
+          .in('class_offering_id', activeOfferingIds)
+          .in('status', ['posted', 'approved']);
+
+        if (grades?.length) {
+          const termGrades = grades.map(g => ({
+            equivalent: g.equivalent_grade != null ? Number(g.equivalent_grade) : null,
+            remarks: g.remarks,
+            subject: g.class_offering?.subject,
+          }));
+          const result = computeTermGwa(termGrades);
+          if (result) setGwa(result);
+        }
       }
       setLoading(false);
     }
 
     load();
-  }, [studentId]);
+  }, [studentId, refreshKey]);
 
   return (
     <TouchableOpacity

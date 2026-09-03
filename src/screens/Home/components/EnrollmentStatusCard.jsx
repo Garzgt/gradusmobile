@@ -10,7 +10,7 @@ const STATUS_CONFIG = {
   default:  { label: 'Not Enrolled', color: '#8BA4BC', bg: '#EEF4FA', icon: 'time-outline' },
 };
 
-export default function EnrollmentStatusCard({ studentId, ready = false }) {
+export default function EnrollmentStatusCard({ studentId, ready = false, refreshKey }) {
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -50,7 +50,7 @@ export default function EnrollmentStatusCard({ studentId, ready = false }) {
       setSubjects(data ?? []);
       setLoading(false);
     })();
-  }, [studentId, ready]));
+  }, [studentId, ready, refreshKey]));
 
   const isEnrolled = subjects.length > 0;
   const status = isEnrolled ? STATUS_CONFIG.enrolled : STATUS_CONFIG.default;

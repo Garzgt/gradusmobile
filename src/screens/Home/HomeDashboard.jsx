@@ -13,6 +13,7 @@ export default function HomeDashboard() {
   const [student, setStudent] = useState(null);
   const [studentLoaded, setStudentLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const loadStudent = async () => {
     const { data } = await supabase
@@ -29,6 +30,7 @@ export default function HomeDashboard() {
   const onRefresh = async () => {
     setRefreshing(true);
     await loadStudent();
+    setRefreshKey((k) => k + 1);
     setRefreshing(false);
   };
 
@@ -43,10 +45,10 @@ export default function HomeDashboard() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2A7AB6" />
         }
       >
-        <ActiveTermCard />
-        <GradeSnapshotCard studentId={student?.id} />
+        <ActiveTermCard refreshKey={refreshKey} />
+        <GradeSnapshotCard studentId={student?.id} refreshKey={refreshKey} />
         <View style={styles.enrollWrap}>
-          <EnrollmentStatusCard studentId={student?.id} ready={studentLoaded} />
+          <EnrollmentStatusCard studentId={student?.id} ready={studentLoaded} refreshKey={refreshKey} />
         </View>
       </ScrollView>
     </SafeAreaView>

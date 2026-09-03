@@ -12,11 +12,12 @@ const formatDate = (dateStr) => {
   return d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
-export default function ActiveTermCard() {
+export default function ActiveTermCard({ refreshKey }) {
   const [term, setTerm] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     supabase
       .from('academic_terms')
       .select('school_year, semester, start_date, end_date, is_active')
@@ -26,7 +27,7 @@ export default function ActiveTermCard() {
         setTerm(data ?? null);
         setLoading(false);
       });
-  }, []);
+  }, [refreshKey]);
 
   return (
     <View style={styles.card}>
