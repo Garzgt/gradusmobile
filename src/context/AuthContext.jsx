@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { supabase } from '../config/supabase';
@@ -15,7 +16,9 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDomainBlocked, setIsDomainBlocked] = useState(false);
+  const [isDeactivated, setIsDeactivated] = useState(false);
   const domainBlockedRef = useRef(false);
+  const deactivatedRef = useRef(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -34,13 +37,73 @@ export function AuthProvider({ children }) {
         if (!domainBlockedRef.current) {
           setIsDomainBlocked(false);
         }
+        if (!deactivatedRef.current) {
+          setIsDeactivated(false);
+        }
         domainBlockedRef.current = false;
+        deactivatedRef.current = false;
         setIsLoading(false);
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Fallback for when the realtime socket below is momentarily disconnected (e.g. after a long
+  // background stretch) — re-runs the check on foreground-resume so it's never worse than that.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active' && session?.user && !domainBlockedRef.current && !deactivatedRef.current) {
+        checkStillActive(session.user);
+      }
+    });
+    return () => sub.remove();
+  }, [session]);
+
+  // Primary mechanism: reacts the moment an admin deactivates this student, even while the app
+  // stays open in the foreground — the AppState check above only catches it on next resume.
+  // Requires the `students` table to be added to the `supabase_realtime` publication.
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!userId || domainBlockedRef.current || deactivatedRef.current) return;
+
+    const channel = supabase
+      .channel(`student-status-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'students', filter: `user_id=eq.${userId}` },
+        (payload) => {
+          if (payload.new?.is_active === false) {
+            deactivatedRef.current = true;
+            supabase.auth.signOut();
+            setIsDeactivated(true);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session?.user?.id]);
+
+  // Returns false (and signs the user out) if this student's account has been deactivated.
+  // No students row yet (e.g. brand-new account mid-setup) is not treated as deactivated.
+  const checkStillActive = async (user) => {
+    const { data: student } = await supabase
+      .from('students')
+      .select('is_active')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (student && student.is_active === false) {
+      deactivatedRef.current = true;
+      await supabase.auth.signOut();
+      setIsDeactivated(true);
+      return false;
+    }
+    return true;
+  };
 
   const fetchProfile = async (user) => {
     const email = user?.email ?? '';
@@ -49,6 +112,12 @@ export function AuthProvider({ children }) {
       domainBlockedRef.current = true;
       await supabase.auth.signOut();
       setIsDomainBlocked(true);
+      setIsLoading(false);
+      return;
+    }
+
+    const stillActive = await checkStillActive(user);
+    if (!stillActive) {
       setIsLoading(false);
       return;
     }
@@ -135,6 +204,7 @@ export function AuthProvider({ children }) {
 
   const signOut = async () => {
     setIsDomainBlocked(false);
+    setIsDeactivated(false);
     await supabase.auth.signOut();
   };
 
@@ -146,6 +216,7 @@ export function AuthProvider({ children }) {
         profile,
         isLoading,
         isDomainBlocked,
+        isDeactivated,
         isAuthenticated: !!session,
         isProfileComplete: !!profile,
         signInWithGoogle,

@@ -11,6 +11,7 @@ import RecognitionCriteria from '../screens/Recognition/RecognitionCriteria';
 import colors from '../styles/colors';
 import routes from '../config/routes';
 import DomainBlocked from '../screens/Auth/DomainBlocked';
+import AccountDeactivated from '../screens/Auth/AccountDeactivated';
 import ProfileSetup from '../screens/ProfileSetup/ProfileSetup';
 
 const Stack = createNativeStackNavigator();
@@ -24,7 +25,7 @@ function LoadingScreen() {
 }
 
 export default function AppNavigator() {
-  const { isLoading, isAuthenticated, isProfileComplete, isDomainBlocked } = useAuth();
+  const { isLoading, isAuthenticated, isProfileComplete, isDomainBlocked, isDeactivated } = useAuth();
 
   if (isLoading) return <LoadingScreen />;
 
@@ -33,6 +34,8 @@ export default function AppNavigator() {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {isDomainBlocked ? (
           <Stack.Screen name={routes.DOMAIN_BLOCKED} component={DomainBlocked} />
+        ) : isDeactivated ? (
+          <Stack.Screen name={routes.ACCOUNT_DEACTIVATED} component={AccountDeactivated} />
         ) : !isAuthenticated ? (
           <Stack.Screen name="Auth" component={AuthNavigator} />
         ) : !isProfileComplete ? (

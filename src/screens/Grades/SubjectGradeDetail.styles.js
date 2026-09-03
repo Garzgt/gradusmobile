@@ -44,11 +44,17 @@ export default StyleSheet.create({
     shadowOpacity: 0.06, shadowRadius: 4,
   },
   infoRow: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12,
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 12, gap: 10,
   },
-  infoLabel: { fontSize: 13, color: '#8BA4BC', fontWeight: '500' },
-  infoValue: { fontSize: 13, color: '#1A2A3A', fontWeight: '600', maxWidth: '55%', textAlign: 'right' },
+  infoIconWrap: {
+    width: 28, height: 28, borderRadius: 9,
+    backgroundColor: '#EBF4FC',
+    alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
+  },
+  infoLabel: { fontSize: 13, color: '#8BA4BC', fontWeight: '500', flex: 1 },
+  infoValue: { fontSize: 13, color: '#1A2A3A', fontWeight: '600', maxWidth: '48%', textAlign: 'right' },
   divider:   { height: 1, backgroundColor: '#EBF4FC', marginHorizontal: 16 },
 
   // ── Final grade card ──────────────────────────────────────────────────────
@@ -69,7 +75,7 @@ export default StyleSheet.create({
     alignItems: 'center', marginBottom: 6,
   },
   gradeCardTitle: {
-    fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.5)', letterSpacing: 0.5,
+    fontSize: 20, fontWeight: '700', color: 'rgba(255,255,255,0.6)', letterSpacing: 0.5,
   },
   equivalentGrade: {
     fontSize: 56, fontWeight: '800', color: '#FFFFFF', letterSpacing: -1, marginBottom: 16,
@@ -164,6 +170,13 @@ export default StyleSheet.create({
     backgroundColor: '#EBF4FC', alignItems: 'center', justifyContent: 'center',
   },
   compBlockTitle:    { fontSize: 13, fontWeight: '700', color: '#1A2A3A' },
+  compBlockWeightChip: {
+    backgroundColor: '#EEF4FA',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  compBlockWeightText: { fontSize: 10, fontWeight: '700', color: '#5A7A9A' },
   compBlockScore:    { flexDirection: 'row', alignItems: 'baseline', gap: 2 },
   compBlockScoreVal: { fontSize: 16, fontWeight: '800', color: '#1a3c5e' },
   compBlockScoreMax: { fontSize: 11, color: '#8BA4BC', fontWeight: '500' },

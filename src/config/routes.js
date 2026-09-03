@@ -2,6 +2,7 @@ const routes = {
   // Auth stack
   LOGIN: 'Login',
   DOMAIN_BLOCKED: 'DomainBlocked',
+  ACCOUNT_DEACTIVATED: 'AccountDeactivated',
 
   // Onboarding
   WELCOME_TOUR: 'WelcomeTour',

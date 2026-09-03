@@ -28,10 +28,13 @@ const ATT_CFG = {
 
 // ─── Info row ─────────────────────────────────────────────────────────────────
 
-function InfoRow({ label, value, last }) {
+function InfoRow({ icon, label, value, last }) {
   return (
     <>
       <View style={styles.infoRow}>
+        <View style={styles.infoIconWrap}>
+          <Ionicons name={icon} size={14} color="#2A7AB6" />
+        </View>
         <Text style={styles.infoLabel}>{label}</Text>
         <Text style={styles.infoValue} numberOfLines={2}>{value ?? '—'}</Text>
       </View>
@@ -164,7 +167,7 @@ function AttendanceContent({ attendance }) {
 
 // ─── Component block (collapsible accordion) ──────────────────────────────────
 
-function ComponentBlock({ icon, title, weighted, raw, transmuted, children }) {
+function ComponentBlock({ icon, title, weightPct, weighted, raw, transmuted, children }) {
   const [open, setOpen] = useState(false);
   return (
     <View style={styles.compBlock}>
@@ -174,6 +177,11 @@ function ComponentBlock({ icon, title, weighted, raw, transmuted, children }) {
             <Ionicons name={icon} size={13} color="#2A7AB6" />
           </View>
           <Text style={styles.compBlockTitle}>{title}</Text>
+          {weightPct > 0 && (
+            <View style={styles.compBlockWeightChip}>
+              <Text style={styles.compBlockWeightText}>{weightPct}%</Text>
+            </View>
+          )}
         </View>
         <View style={styles.compBlockRight}>
           {weighted != null && (
@@ -291,6 +299,7 @@ function PeriodSection({ component, label, settings: s, periodSettings: ps, atte
         {/* 1. Attendance */}
         {s?.weight_attendance > 0 && (
           <ComponentBlock icon="calendar-outline" title="Attendance"
+            weightPct={s?.weight_attendance}
             weighted={component.attendance_weighted}
           >
             <AttendanceContent attendance={attendance} />
@@ -300,6 +309,7 @@ function PeriodSection({ component, label, settings: s, periodSettings: ps, atte
         {/* 2. Quizzes */}
         {hasQuiz && (
           <ComponentBlock icon="help-circle-outline" title="Quizzes"
+            weightPct={s?.weight_quizzes}
             weighted={component.quizzes_weighted}
             raw={component.quizzes_raw} transmuted={component.quizzes_transmuted}
           >
@@ -314,6 +324,7 @@ function PeriodSection({ component, label, settings: s, periodSettings: ps, atte
         {/* 3. Activities */}
         {hasAct && (
           <ComponentBlock icon="create-outline" title="Activities"
+            weightPct={s?.weight_activities}
             weighted={component.activities_weighted}
             raw={component.activities_raw} transmuted={component.activities_transmuted}
           >
@@ -328,6 +339,7 @@ function PeriodSection({ component, label, settings: s, periodSettings: ps, atte
         {/* 4. Recitation */}
         {s?.weight_recitation > 0 && (
           <ComponentBlock icon="mic-outline" title="Recitation"
+            weightPct={s?.weight_recitation}
             weighted={component.recitation_weighted}
             transmuted={component.recitation_transmuted}
           >
@@ -338,6 +350,7 @@ function PeriodSection({ component, label, settings: s, periodSettings: ps, atte
         {/* 5. Laboratory */}
         {s?.weight_laboratory > 0 && (
           <ComponentBlock icon="flask-outline" title="Laboratory"
+            weightPct={s?.weight_laboratory}
             weighted={component.laboratory_weighted}
             raw={component.laboratory_raw} transmuted={component.laboratory_transmuted}
           >
@@ -348,6 +361,7 @@ function PeriodSection({ component, label, settings: s, periodSettings: ps, atte
         {/* 6. Major Exam */}
         {s?.weight_major_exam > 0 && (
           <ComponentBlock icon="document-text-outline" title="Major Exam"
+            weightPct={s?.weight_major_exam}
             weighted={component.major_exam_weighted}
             raw={component.major_exam_raw} transmuted={component.major_exam_transmuted}
           >
@@ -431,15 +445,6 @@ export default function SubjectGradeDetail() {
           </View>
         ) : (
           <>
-            {/* Subject info card */}
-            <View style={styles.infoCard}>
-              <InfoRow label="Subject Code" value={subject?.subject_code} />
-              <InfoRow label="Credit Units"  value={formatCreditUnits(subject)} />
-              <InfoRow label="Teacher" value={teacher ? `${teacher.first_name} ${teacher.last_name}` : null} />
-              <InfoRow label="Section" value={data?.section?.section_code} />
-              <InfoRow label="Term"    value={formatTermLabel(data?.term)} last />
-            </View>
-
             {/* Final grade card — only shown once teacher posts grades */}
             {data.hasPostedGrade && <View style={styles.gradeCard}>
               <View style={styles.decOrbCard} />
@@ -550,6 +555,15 @@ export default function SubjectGradeDetail() {
                 </Text>
               </View>
             )}
+
+            {/* Subject info card */}
+            <View style={styles.infoCard}>
+              <InfoRow icon="pricetag-outline" label="Subject Code" value={subject?.subject_code} />
+              <InfoRow icon="school-outline" label="Credit Units" value={formatCreditUnits(subject)} />
+              <InfoRow icon="person-outline" label="Teacher" value={teacher ? `${teacher.first_name} ${teacher.last_name}` : null} />
+              <InfoRow icon="people-outline" label="Section" value={data?.section?.section_code} />
+              <InfoRow icon="calendar-outline" label="Term" value={formatTermLabel(data?.term)} last />
+            </View>
           </>
         )}
       </ScrollView>
