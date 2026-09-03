@@ -62,7 +62,7 @@ export default function EnrollmentStatusCard({ studentId, ready = false, refresh
           <View style={styles.titleIcon}>
             <Ionicons name="school-outline" size={14} color="#2A7AB6" />
           </View>
-          <Text style={styles.title}>Enrollment</Text>
+          <Text style={styles.title} numberOfLines={1}>Active Term Enrolled Subject</Text>
         </View>
         <View style={[styles.badge, { backgroundColor: status.bg }]}>
           <Ionicons name={status.icon} size={12} color={status.color} />
@@ -142,9 +142,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   titleRow: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginRight: 8,
   },
   titleIcon: {
     width: 26,
@@ -155,6 +157,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
+    flexShrink: 1,
     fontSize: 14,
     fontWeight: '700',
     color: '#1A2A3A',
