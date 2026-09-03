@@ -445,7 +445,6 @@ export default function SubjectGradeDetail() {
               <View style={styles.decOrbCard} />
               <View style={styles.gradeCardTop}>
                 <Text style={styles.gradeCardTitle}>Final Grade</Text>
-                <GradeStatusBadge remarks={data?.remarks} />
               </View>
               <Text style={equivStyle}>{equivDisplay}</Text>
               <View style={styles.gradeRow}>
@@ -454,6 +453,9 @@ export default function SubjectGradeDetail() {
                   <Text style={styles.gradeChipValue}>
                     {data?.midGrade != null ? data.midGrade.toFixed(2) : '—'}
                   </Text>
+                  {data?.midtermIncentive > 0 && (
+                    <Text style={styles.incentiveNote}>+{data.midtermIncentive.toFixed(2)} incentive</Text>
+                  )}
                 </View>
                 <View style={styles.gradeSep} />
                 <View style={styles.gradeChip}>
@@ -461,7 +463,21 @@ export default function SubjectGradeDetail() {
                   <Text style={styles.gradeChipValue}>
                     {data?.finGrade != null ? data.finGrade.toFixed(2) : '—'}
                   </Text>
+                  {data?.finalTermIncentive > 0 && (
+                    <Text style={styles.incentiveNote}>+{data.finalTermIncentive.toFixed(2)} incentive</Text>
+                  )}
                 </View>
+              </View>
+              {data?.gradeIncentive > 0 && (
+                <View style={styles.gradeIncentiveRow}>
+                  <Ionicons name="star" size={12} color="#4ADE80" />
+                  <Text style={styles.gradeIncentiveText}>
+                    +{data.gradeIncentive.toFixed(2)} final grade incentive from your teacher
+                  </Text>
+                </View>
+              )}
+              <View style={styles.statusBadgeBottom}>
+                <GradeStatusBadge remarks={data?.remarks} />
               </View>
             </View>}
 

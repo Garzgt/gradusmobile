@@ -18,6 +18,7 @@ import {
 } from './services/notificationService';
 import NotificationCard from './components/NotificationCard';
 import NotificationFilterTabs from './components/NotificationFilterTabs';
+import NotificationDetailModal from './components/NotificationDetailModal';
 
 export default function NotificationInbox() {
   const navigation = useNavigation();
@@ -33,6 +34,7 @@ export default function NotificationInbox() {
   const [error, setError] = useState('');
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [viewingItem, setViewingItem] = useState(null);
 
   const loadData = useCallback(async (isRefresh = false) => {
     if (!user) { setLoading(false); return; }
@@ -71,6 +73,7 @@ export default function NotificationInbox() {
 
   const handleCardPress = async (item) => {
     if (selectMode) { toggleSelected(item.id); return; }
+    setViewingItem(item);
     if (item.is_read) return;
     setNotifications(prev =>
       prev.map(n => n.id === item.id ? { ...n, is_read: true } : n)
@@ -244,6 +247,8 @@ export default function NotificationInbox() {
           </TouchableOpacity>
         </View>
       )}
+
+      <NotificationDetailModal item={viewingItem} onClose={() => setViewingItem(null)} />
     </SafeAreaView>
   );
 }

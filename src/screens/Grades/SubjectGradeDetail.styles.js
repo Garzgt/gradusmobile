@@ -65,14 +65,15 @@ export default StyleSheet.create({
     backgroundColor: 'rgba(42,122,182,0.18)', top: -70, right: -50,
   },
   gradeCardTop: {
-    flexDirection: 'row', justifyContent: 'space-between',
+    flexDirection: 'row', justifyContent: 'center', gap: 8,
     alignItems: 'center', marginBottom: 6,
   },
   gradeCardTitle: {
-    fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.5)', letterSpacing: 0.5,
+    fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.5)', letterSpacing: 0.5,
   },
   equivalentGrade: {
     fontSize: 56, fontWeight: '800', color: '#FFFFFF', letterSpacing: -1, marginBottom: 16,
+    textAlign: 'center',
   },
   gradeRow:  { flexDirection: 'row', alignItems: 'center' },
   gradeChip: { flex: 1, alignItems: 'center' },
@@ -82,6 +83,14 @@ export default StyleSheet.create({
     letterSpacing: 0.5, marginBottom: 2, textTransform: 'uppercase',
   },
   gradeChipValue: { fontSize: 18, fontWeight: '700', color: '#FFFFFF' },
+  incentiveNote: { fontSize: 10, fontWeight: '600', color: '#4ADE80', marginTop: 3 },
+  gradeIncentiveRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    marginTop: 14, paddingTop: 14,
+    borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.12)',
+  },
+  gradeIncentiveText: { fontSize: 12, fontWeight: '600', color: '#4ADE80' },
+  statusBadgeBottom: { flexDirection: 'row', justifyContent: 'center', marginTop: 14 },
 
   // ── Breakdown wrapper ─────────────────────────────────────────────────────
   breakdownWrap: { marginTop: 10, marginHorizontal: 10, marginBottom: 8 },

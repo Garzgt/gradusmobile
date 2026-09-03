@@ -35,7 +35,10 @@ const POSTED_GRADE_FIELDS = `
   final_points,
   equivalent_grade,
   remarks,
-  status
+  status,
+  midterm_incentive_points,
+  final_incentive_points,
+  incentive_points
 `;
 
 // --- Public API ---
@@ -175,6 +178,9 @@ export async function fetchGradeDetail(classOfferingId, studentId) {
       finalPoints: postedGrade?.final_points      != null ? Number(postedGrade.final_points)      : null,
       equivalent:  postedGrade?.equivalent_grade  != null ? Number(postedGrade.equivalent_grade)  : null,
       remarks:     postedGrade?.remarks ?? null,
+      midtermIncentive:  Number(postedGrade?.midterm_incentive_points) || 0,
+      finalTermIncentive: Number(postedGrade?.final_incentive_points) || 0,
+      gradeIncentive:    Number(postedGrade?.incentive_points) || 0,
     },
     error: null,
   };

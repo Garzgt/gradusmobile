@@ -2,12 +2,13 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-const TYPE_CONFIG = {
-  grade_posted:  { icon: 'school-outline',          color: '#2A7AB6', bg: '#EBF4FC' },
-  enrollment:    { icon: 'checkmark-circle-outline', color: '#1a6e4a', bg: '#E8F5EE' },
-  advising:      { icon: 'document-text-outline',    color: '#1a3c5e', bg: '#EEF4FA' },
-  announcement:  { icon: 'megaphone-outline',        color: '#5A7A9A', bg: '#F0F6FC' },
-  general:       { icon: 'notifications-outline',    color: '#5A7A9A', bg: '#F0F6FC' },
+export const TYPE_CONFIG = {
+  grade_posted:     { icon: 'school-outline',          color: '#2A7AB6', bg: '#EBF4FC' },
+  enrollment:       { icon: 'checkmark-circle-outline', color: '#1a6e4a', bg: '#E8F5EE' },
+  advising:         { icon: 'document-text-outline',    color: '#1a3c5e', bg: '#EEF4FA' },
+  announcement:     { icon: 'megaphone-outline',        color: '#5A7A9A', bg: '#F0F6FC' },
+  achiever_awarded: { icon: 'ribbon-outline',           color: '#D97706', bg: '#FEF3C7' },
+  general:          { icon: 'notifications-outline',    color: '#5A7A9A', bg: '#F0F6FC' },
 };
 
 function timeAgo(dateStr) {
@@ -50,7 +51,7 @@ export default function NotificationCard({ item, onPress, onLongPress, selectMod
           </Text>
           <Text style={styles.time}>{timeAgo(item.created_at)}</Text>
         </View>
-        <Text style={styles.message} numberOfLines={2}>{item.message}</Text>
+        <Text style={styles.message} numberOfLines={3}>{item.message}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -63,7 +64,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
     marginBottom: 8,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     padding: 14,
     gap: 12,
     elevation: 1,
