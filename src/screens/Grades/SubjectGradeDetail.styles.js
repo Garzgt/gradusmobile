@@ -90,13 +90,24 @@ export default StyleSheet.create({
   },
   gradeChipValue: { fontSize: 18, fontWeight: '700', color: '#FFFFFF' },
   incentiveNote: { fontSize: 10, fontWeight: '600', color: '#4ADE80', marginTop: 3 },
-  gradeIncentiveRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+  finalGradeFooter: {
     marginTop: 14, paddingTop: 14,
     borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.12)',
   },
+  rawFinalGradeRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+  },
+  rawFinalGradeLabel: {
+    fontSize: 11, color: 'rgba(255,255,255,0.45)', fontWeight: '600',
+    letterSpacing: 0.5, textTransform: 'uppercase',
+  },
+  rawFinalGradeValue: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
+  gradeIncentiveRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    marginTop: 10,
+  },
   gradeIncentiveText: { fontSize: 12, fontWeight: '600', color: '#4ADE80' },
-  statusBadgeBottom: { flexDirection: 'row', justifyContent: 'center', marginTop: 14 },
+  statusBadgeBottom: { flexDirection: 'row', justifyContent: 'center', marginTop: 12 },
 
   // ── Breakdown wrapper ─────────────────────────────────────────────────────
   breakdownWrap: { marginTop: 10, marginHorizontal: 10, marginBottom: 8 },
@@ -151,6 +162,7 @@ export default StyleSheet.create({
   periodHeaderRight:  { alignItems: 'flex-end' },
   periodHeaderGrade:  { fontSize: 28, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.5 },
   periodHeaderSub:    { fontSize: 10, color: 'rgba(255,255,255,0.45)', fontWeight: '600', letterSpacing: 0.5 },
+  periodHeaderIncentive: { fontSize: 9, color: '#4ADE80', fontWeight: '700', marginTop: 2 },
   compBlocksWrap:     { paddingBottom: 4 },
   blockDivider:       { height: 6, backgroundColor: '#EBF4FC' },
 

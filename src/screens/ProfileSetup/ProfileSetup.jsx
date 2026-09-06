@@ -13,6 +13,7 @@ import { useAuth } from '../../context/AuthContext';
 import { saveStudentProfile } from './services/profileSetupService';
 import BasicInfoForm from './components/BasicInfoForm';
 import ProgramPicker from './components/ProgramPicker';
+import TransfereeSection from './components/TransfereeSection';
 import styles from './ProfileSetup.styles';
 
 export default function ProfileSetup() {
@@ -27,17 +28,30 @@ export default function ProfileSetup() {
     contactNumber: '',
   });
   const [programId, setProgramId] = useState('');
+  const [isTransferee, setIsTransferee] = useState(false);
+  const [transfereeYearLevel, setTransfereeYearLevel] = useState(null);
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setError('');
   };
 
-  const isValid = form.firstName.trim() && form.lastName.trim() && programId;
+  const handleToggleTransferee = (checked) => {
+    setIsTransferee(checked);
+    if (!checked) setTransfereeYearLevel(null);
+    setError('');
+  };
+
+  const isValid = form.firstName.trim() && form.lastName.trim() && programId
+    && (!isTransferee || transfereeYearLevel);
 
   const handleSubmit = async () => {
     if (!isValid) {
-      setError('Fill in all required fields and select a program.');
+      setError(
+        isTransferee && !transfereeYearLevel
+          ? 'Select your current year level.'
+          : 'Fill in all required fields and select a program.'
+      );
       return;
     }
     setSaving(true);
@@ -50,6 +64,8 @@ export default function ProfileSetup() {
       lastName: form.lastName.trim(),
       programId,
       contactNumber: form.contactNumber.trim(),
+      isTransferee,
+      yearLevel: isTransferee ? transfereeYearLevel : null,
     });
     if (saveError) {
       setError(saveError.message || 'Something went wrong. Please try again.');
@@ -85,6 +101,16 @@ export default function ProfileSetup() {
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>Academic Program</Text>
             <ProgramPicker value={programId} onChange={setProgramId} />
+          </View>
+
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Student Status</Text>
+            <TransfereeSection
+              isTransferee={isTransferee}
+              onToggleTransferee={handleToggleTransferee}
+              yearLevel={transfereeYearLevel}
+              onChangeYearLevel={setTransfereeYearLevel}
+            />
           </View>
         </ScrollView>
 

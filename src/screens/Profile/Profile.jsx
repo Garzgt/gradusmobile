@@ -6,9 +6,11 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../context/ToastContext';
 import { supabase } from '../../config/supabase';
 import SkeletonBox from '../../components/SkeletonLoader';
 import routes from '../../config/routes';
+import EditProfileModal from './components/EditProfileModal';
 
 const YEAR_LABEL = { 1: '1st Year', 2: '2nd Year', 3: '3rd Year', 4: '4th Year' };
 const SEX_LABEL  = { M: 'Male', F: 'Female' };
@@ -35,10 +37,12 @@ function InfoRow({ icon, label, value, last }) {
 export default function Profile() {
   const navigation = useNavigation();
   const { user, profile, signOut } = useAuth();
+  const toast = useToast();
   const insets = useSafeAreaInsets();
 
   const [student, setStudent] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [editVisible, setEditVisible] = useState(false);
 
   const loadStudent = useCallback(async () => {
     if (!user) { setLoading(false); return; }
@@ -65,6 +69,12 @@ export default function Profile() {
     .slice(0, 2)
     .map(w => w[0].toUpperCase())
     .join('');
+
+  const handleProfileSaved = (updates) => {
+    setStudent((prev) => (prev ? { ...prev, ...updates } : prev));
+    setEditVisible(false);
+    toast.show({ type: 'success', title: 'Profile updated', message: 'Your changes have been saved.' });
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -112,8 +122,19 @@ export default function Profile() {
         </View>
 
         {/* Personal Information */}
-        <View style={styles.sectionLabel}>
+        <View style={[styles.sectionLabel, styles.sectionLabelRow]}>
           <Text style={styles.sectionLabelText}>Personal Information</Text>
+          {!loading && (
+            <TouchableOpacity
+              style={styles.editBtn}
+              onPress={() => setEditVisible(true)}
+              activeOpacity={0.8}
+              hitSlop={8}
+            >
+              <Ionicons name="pencil" size={12} color="#2A7AB6" />
+              <Text style={styles.editBtnText}>Edit</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.infoCard}>
@@ -188,6 +209,13 @@ export default function Profile() {
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <EditProfileModal
+        visible={editVisible}
+        student={student}
+        onClose={() => setEditVisible(false)}
+        onSaved={handleProfileSaved}
+      />
     </SafeAreaView>
   );
 }
@@ -263,6 +291,19 @@ const styles = StyleSheet.create({
   sectionLabelText: {
     fontSize: 11, fontWeight: '700', color: '#8BA4BC',
     letterSpacing: 1.5, textTransform: 'uppercase',
+  },
+  sectionLabelRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    position: 'relative',
+  },
+  editBtn: {
+    position: 'absolute', right: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 8, paddingVertical: 3,
+    backgroundColor: '#EBF4FC', borderRadius: 8,
+  },
+  editBtnText: {
+    fontSize: 11, fontWeight: '700', color: '#2A7AB6',
   },
 
   infoCard: {

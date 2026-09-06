@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -258,7 +258,13 @@ function GradeWeightsCard({ settings: s }) {
 function PeriodSection({ component, label, settings: s, periodSettings: ps, attendance }) {
   if (!component) return null;
 
-  const grade = component.term_grade_numeric;
+  // term_grade_numeric is the raw weighted score before incentive — the teacher's incentive
+  // points (set via SOG) are applied on top when computing the final blended grade, so the
+  // period grade shown here needs the same addition to match what actually counts.
+  const incentive = Number(component.incentive_points) || 0;
+  const grade = component.term_grade_numeric != null
+    ? Number(component.term_grade_numeric) + incentive
+    : null;
 
   const q1max = Number(ps?.q1_max ?? s?.q1_max ?? 0);
   const q2max = Number(ps?.q2_max ?? s?.q2_max ?? 0);
@@ -290,6 +296,9 @@ function PeriodSection({ component, label, settings: s, periodSettings: ps, atte
           <View style={styles.periodHeaderRight}>
             <Text style={styles.periodHeaderGrade}>{Number(grade).toFixed(2)}</Text>
             <Text style={styles.periodHeaderSub}>term grade</Text>
+            {incentive > 0 && (
+              <Text style={styles.periodHeaderIncentive}>incl. +{incentive.toFixed(2)} incentive</Text>
+            )}
           </View>
         )}
       </View>
@@ -393,14 +402,15 @@ export default function SubjectGradeDetail() {
   const insets     = useSafeAreaInsets();
   const { classOfferingId, studentId, subjectTitle } = route.params ?? {};
 
-  const [loading,   setLoading]   = useState(true);
-  const [data,      setData]      = useState(null);
-  const [error,     setError]     = useState('');
-  const [activeTab, setActiveTab] = useState('midterm');
+  const [loading,    setLoading]    = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [data,       setData]       = useState(null);
+  const [error,      setError]      = useState('');
+  const [activeTab,  setActiveTab]  = useState('midterm');
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (isRefresh = false) => {
     if (!classOfferingId || !studentId) { setLoading(false); return; }
-    setLoading(true);
+    if (!isRefresh) setLoading(true);
     setError('');
     const { data: result, error: err } = await fetchGradeDetail(classOfferingId, studentId);
     if (err || !result) setError('Could not load grade details.');
@@ -409,6 +419,12 @@ export default function SubjectGradeDetail() {
   }, [classOfferingId, studentId]);
 
   useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadData(true);
+    setRefreshing(false);
+  };
 
   const subject      = data?.subject;
   const teacher      = data?.teacher;
@@ -432,7 +448,13 @@ export default function SubjectGradeDetail() {
         </Text>
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={{ paddingBottom: insets.bottom + 88 }}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 88 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2A7AB6" colors={['#2A7AB6']} />
+        }
+      >
         {loading ? (
           <View style={{ padding: 16, gap: 12 }}>
             <SkeletonBox width="100%" height={180} borderRadius={16} />
@@ -456,33 +478,41 @@ export default function SubjectGradeDetail() {
                 <View style={styles.gradeChip}>
                   <Text style={styles.gradeChipLabel}>Midterm</Text>
                   <Text style={styles.gradeChipValue}>
-                    {data?.midGrade != null ? data.midGrade.toFixed(2) : '—'}
+                    {data?.midGrade != null ? (data.midGrade + (data.midtermIncentive || 0)).toFixed(2) : '—'}
                   </Text>
                   {data?.midtermIncentive > 0 && (
-                    <Text style={styles.incentiveNote}>+{data.midtermIncentive.toFixed(2)} incentive</Text>
+                    <Text style={styles.incentiveNote}>incl. +{data.midtermIncentive.toFixed(2)} incentive</Text>
                   )}
                 </View>
                 <View style={styles.gradeSep} />
                 <View style={styles.gradeChip}>
                   <Text style={styles.gradeChipLabel}>Final Term</Text>
                   <Text style={styles.gradeChipValue}>
-                    {data?.finGrade != null ? data.finGrade.toFixed(2) : '—'}
+                    {data?.finGrade != null ? (data.finGrade + (data.finalTermIncentive || 0)).toFixed(2) : '—'}
                   </Text>
                   {data?.finalTermIncentive > 0 && (
-                    <Text style={styles.incentiveNote}>+{data.finalTermIncentive.toFixed(2)} incentive</Text>
+                    <Text style={styles.incentiveNote}>incl. +{data.finalTermIncentive.toFixed(2)} incentive</Text>
                   )}
                 </View>
               </View>
-              {data?.gradeIncentive > 0 && (
-                <View style={styles.gradeIncentiveRow}>
-                  <Ionicons name="star" size={12} color="#4ADE80" />
-                  <Text style={styles.gradeIncentiveText}>
-                    +{data.gradeIncentive.toFixed(2)} final grade incentive from your teacher
+              <View style={styles.finalGradeFooter}>
+                <View style={styles.rawFinalGradeRow}>
+                  <Text style={styles.rawFinalGradeLabel}>Final Grade</Text>
+                  <Text style={styles.rawFinalGradeValue}>
+                    {data?.finalPoints != null ? data.finalPoints.toFixed(2) : '—'}
                   </Text>
                 </View>
-              )}
-              <View style={styles.statusBadgeBottom}>
-                <GradeStatusBadge remarks={data?.remarks} />
+                {data?.gradeIncentive > 0 && (
+                  <View style={styles.gradeIncentiveRow}>
+                    <Ionicons name="star" size={12} color="#4ADE80" />
+                    <Text style={styles.gradeIncentiveText}>
+                      +{data.gradeIncentive.toFixed(2)} final grade incentive from your teacher
+                    </Text>
+                  </View>
+                )}
+                <View style={styles.statusBadgeBottom}>
+                  <GradeStatusBadge remarks={data?.remarks} />
+                </View>
               </View>
             </View>}
 

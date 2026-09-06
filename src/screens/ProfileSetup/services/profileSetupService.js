@@ -8,7 +8,7 @@ export async function fetchPrograms() {
   return { data, error };
 }
 
-export async function saveStudentProfile({ userId, email, firstName, middleName, lastName, programId, contactNumber }) {
+export async function saveStudentProfile({ userId, email, firstName, middleName, lastName, programId, contactNumber, isTransferee, yearLevel }) {
   const studentNumber = email.split('@')[0];
 
   const { error: profileError } = await supabase
@@ -30,6 +30,8 @@ export async function saveStudentProfile({ userId, email, firstName, middleName,
     p_last_name:       lastName,
     p_program_id:      programId,
     p_contact_number:  contactNumber || '',
+    p_is_transferee:   !!isTransferee,
+    p_self_reported_year_level: isTransferee ? yearLevel : null,
   });
 
   return { error: studentError };
