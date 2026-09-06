@@ -496,6 +496,9 @@ export default function SubjectGradeDetail() {
                 </View>
               </View>
               <View style={styles.finalGradeFooter}>
+                <View style={styles.convertArrowRow}>
+                  <Ionicons name="arrow-up" size={14} color="rgba(255,255,255,0.4)" />
+                </View>
                 <View style={styles.rawFinalGradeRow}>
                   <Text style={styles.rawFinalGradeLabel}>Final Grade</Text>
                   <Text style={styles.rawFinalGradeValue}>

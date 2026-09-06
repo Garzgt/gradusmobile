@@ -94,14 +94,17 @@ export default StyleSheet.create({
     marginTop: 14, paddingTop: 14,
     borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.12)',
   },
+  convertArrowRow: {
+    alignItems: 'center', marginBottom: 6,
+  },
   rawFinalGradeRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    alignItems: 'center',
   },
   rawFinalGradeLabel: {
-    fontSize: 11, color: 'rgba(255,255,255,0.45)', fontWeight: '600',
-    letterSpacing: 0.5, textTransform: 'uppercase',
+    fontSize: 10, color: 'rgba(255,255,255,0.45)', fontWeight: '600',
+    letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 2,
   },
-  rawFinalGradeValue: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
+  rawFinalGradeValue: { fontSize: 18, fontWeight: '700', color: '#FFFFFF' },
   gradeIncentiveRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
     marginTop: 10,
