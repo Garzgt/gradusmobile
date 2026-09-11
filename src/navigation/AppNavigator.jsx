@@ -1,5 +1,4 @@
-import React from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
@@ -8,7 +7,8 @@ import StudentTabNavigator from './StudentTabNavigator';
 import NotificationInbox from '../screens/Notifications/NotificationInbox';
 import MyRecognition from '../screens/Recognition/MyRecognition';
 import RecognitionCriteria from '../screens/Recognition/RecognitionCriteria';
-import colors from '../styles/colors';
+import BrandedLoader from '../components/BrandedLoader';
+import { hideSplash } from '../config/splash';
 import routes from '../config/routes';
 import DomainBlocked from '../screens/Auth/DomainBlocked';
 import AccountDeactivated from '../screens/Auth/AccountDeactivated';
@@ -16,18 +16,16 @@ import ProfileSetup from '../screens/ProfileSetup/ProfileSetup';
 
 const Stack = createNativeStackNavigator();
 
-function LoadingScreen() {
-  return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bgPage }}>
-      <ActivityIndicator size="large" color={colors.primary} />
-    </View>
-  );
-}
-
 export default function AppNavigator() {
   const { isLoading, isAuthenticated, isProfileComplete, isDomainBlocked, isDeactivated } = useAuth();
 
-  if (isLoading) return <LoadingScreen />;
+  // Hold the native splash until auth has resolved, so the common path goes
+  // straight from splash to the real screen with no loading state in between.
+  useEffect(() => {
+    if (!isLoading) hideSplash();
+  }, [isLoading]);
+
+  if (isLoading) return <BrandedLoader />;
 
   return (
     <NavigationContainer>
