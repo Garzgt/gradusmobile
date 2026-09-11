@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import PressableScale from '../../../components/animated/PressableScale';
 
 export const TYPE_CONFIG = {
   grade_posted:     { icon: 'school-outline',          color: '#2A7AB6', bg: '#EBF4FC' },
@@ -28,11 +29,11 @@ export default function NotificationCard({ item, onPress, onLongPress, selectMod
   const unread = !item.is_read;
 
   return (
-    <TouchableOpacity
+    <PressableScale
       style={[styles.card, unread && styles.cardUnread, selected && styles.cardSelected]}
+      scaleTo={0.98}
       onPress={() => onPress(item)}
       onLongPress={() => onLongPress(item)}
-      activeOpacity={0.75}
     >
       {unread && <View style={styles.unreadStrip} />}
       {selectMode ? (
@@ -53,7 +54,7 @@ export default function NotificationCard({ item, onPress, onLongPress, selectMod
         </View>
         <Text style={styles.message} numberOfLines={3}>{item.message}</Text>
       </View>
-    </TouchableOpacity>
+    </PressableScale>
   );
 }
 

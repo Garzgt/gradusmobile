@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import Animated, { ZoomIn } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import PressableScale from '../../../components/animated/PressableScale';
+import CountUpNumber from '../../../components/animated/CountUpNumber';
 import { useToast } from '../../../context/ToastContext';
 import { getOrGenerateCertificateUrl, openCertificate } from '../services/certificateService';
 
@@ -60,9 +63,12 @@ export default function HonorCard({ item, user, onCertificateGenerated }) {
   return (
     <View style={styles.card}>
       <View style={[styles.cardTop, { backgroundColor: config.color }]}>
-        <View style={[styles.iconWrap, { backgroundColor: 'rgba(255,255,255,0.18)' }]}>
+        <Animated.View
+          style={[styles.iconWrap, { backgroundColor: 'rgba(255,255,255,0.18)' }]}
+          entering={ZoomIn.springify().damping(12).stiffness(180)}
+        >
           <Ionicons name={config.icon} size={26} color="#FFFFFF" />
-        </View>
+        </Animated.View>
         <View style={styles.cardTopText}>
           <Text style={styles.honorLabel}>{config.label}</Text>
           {item.term?.is_active && (
@@ -82,23 +88,30 @@ export default function HonorCard({ item, user, onCertificateGenerated }) {
           {item.rank && (
             <View style={[styles.infoItem, { alignItems: 'flex-end' }]}>
               <Text style={styles.infoLabel}>RANK</Text>
-              <Text style={[styles.gwaValue, { color: config.color }]}>#{item.rank}</Text>
+              <Text style={[styles.gwaValue, { color: config.color }]}>
+                #<CountUpNumber
+                   value={item.rank}
+                   decimals={0}
+                   style={[styles.gwaValue, { color: config.color }]}
+                 />
+              </Text>
             </View>
           )}
           <View style={[styles.infoItem, { alignItems: 'flex-end' }]}>
             <Text style={styles.infoLabel}>GWA</Text>
-            <Text style={[styles.gwaValue, { color: config.color }]}>
-              {parseFloat(item.gwa).toFixed(4)}
-            </Text>
+            <CountUpNumber
+              value={item.gwa}
+              decimals={4}
+              style={[styles.gwaValue, { color: config.color }]}
+            />
           </View>
         </View>
       </View>
 
-      <TouchableOpacity
+      <PressableScale
         style={styles.certBtn}
         onPress={handleCertificatePress}
         disabled={generating}
-        activeOpacity={0.8}
       >
         {generating ? (
           <ActivityIndicator size="small" color="#2A7AB6" />
@@ -116,7 +129,7 @@ export default function HonorCard({ item, user, onCertificateGenerated }) {
               ? 'View Certificate'
               : 'Generate Certificate'}
         </Text>
-      </TouchableOpacity>
+      </PressableScale>
     </View>
   );
 }

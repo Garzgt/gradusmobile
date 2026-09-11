@@ -1,20 +1,31 @@
-import React, { useCallback, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import {
-  View, Text, ScrollView, RefreshControl,
-  TouchableOpacity, StyleSheet,
+  View, Text, RefreshControl, StyleSheet,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, {
+  FadeInDown,
+  FadeOut,
+  LinearTransition,
+  useAnimatedScrollHandler,
+  useSharedValue,
+} from 'react-native-reanimated';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { useAlert } from '../../context/AlertContext';
 import { useToast } from '../../context/ToastContext';
 import SkeletonBox from '../../components/SkeletonLoader';
+import FadeInSection from '../../components/animated/FadeInSection';
+import PressableScale from '../../components/animated/PressableScale';
+import useParallaxMotion from '../../animations/useParallaxMotion';
+import { duration as motionDuration } from '../../animations/motionTokens';
 import {
   fetchNotifications,
   markOneAsRead,
   markAllAsRead,
   deleteNotifications,
+  subscribeToNotifications,
 } from './services/notificationService';
 import NotificationCard from './components/NotificationCard';
 import NotificationFilterTabs from './components/NotificationFilterTabs';
@@ -54,6 +65,29 @@ export default function NotificationInbox() {
   }, [user]);
 
   useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
+
+  // Live inbox. Every handler is idempotent by id, because the optimistic updates
+  // elsewhere in this screen (mark-as-read, delete) come back around as realtime
+  // events for the same rows — applying them twice has to be a no-op.
+  useEffect(() => {
+    if (!user) return undefined;
+
+    return subscribeToNotifications(user.id, {
+      onInsert: (row) => setNotifications(prev => (
+        prev.some(n => n.id === row.id) ? prev : [row, ...prev]
+      )),
+      onUpdate: (row) => setNotifications(prev => (
+        prev.map(n => (n.id === row.id ? { ...n, ...row } : n))
+      )),
+      onDelete: (id) => setNotifications(prev => prev.filter(n => n.id !== id)),
+    });
+  }, [user?.id]);
+
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((event) => {
+    scrollY.value = event.contentOffset.y;
+  });
+  const orbStyle = useParallaxMotion(scrollY, { factor: 0.25, clamp: 200 });
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -148,15 +182,16 @@ export default function NotificationInbox() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <View style={styles.decOrb} />
+        <Animated.View style={[styles.decOrb, orbStyle]} />
         <View style={styles.headerTop}>
-          <TouchableOpacity
+          <PressableScale
             style={styles.backBtn}
+            scaleTo={0.86}
+            hitSlop={8}
             onPress={selectMode ? handleCancelSelect : () => navigation.goBack()}
-            activeOpacity={0.7}
           >
             <Ionicons name={selectMode ? 'close' : 'arrow-back'} size={20} color="rgba(255,255,255,0.85)" />
-          </TouchableOpacity>
+          </PressableScale>
         </View>
         <Text style={styles.headerLabel}>NOTIFICATIONS</Text>
         <View style={styles.headerBottom}>
@@ -164,13 +199,13 @@ export default function NotificationInbox() {
             {selectMode ? `${selectedIds.size} selected` : 'Inbox'}
           </Text>
           {selectMode ? (
-            <TouchableOpacity onPress={handleToggleSelectAll} activeOpacity={0.7}>
+            <PressableScale scaleTo={0.94} hitSlop={8} onPress={handleToggleSelectAll}>
               <Text style={styles.markAllText}>{allSelected ? 'Deselect all' : 'Select all'}</Text>
-            </TouchableOpacity>
+            </PressableScale>
           ) : unreadCount > 0 && (
-            <TouchableOpacity onPress={handleMarkAllRead} activeOpacity={0.7}>
+            <PressableScale scaleTo={0.94} hitSlop={8} onPress={handleMarkAllRead}>
               <Text style={styles.markAllText}>Mark all read</Text>
-            </TouchableOpacity>
+            </PressableScale>
           )}
         </View>
         <Text style={styles.headerSub}>
@@ -178,9 +213,11 @@ export default function NotificationInbox() {
         </Text>
       </View>
 
-      <ScrollView
+      <Animated.ScrollView
         style={styles.scroll}
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -200,12 +237,12 @@ export default function NotificationInbox() {
           {loading ? (
             <NotificationSkeleton />
           ) : error ? (
-            <View style={styles.emptyCard}>
+            <FadeInSection style={styles.emptyCard}>
               <Ionicons name="alert-circle-outline" size={32} color="#C8DFF0" />
               <Text style={styles.emptyTitle}>{error}</Text>
-            </View>
+            </FadeInSection>
           ) : displayed.length === 0 ? (
-            <View style={styles.emptyCard}>
+            <FadeInSection style={styles.emptyCard}>
               <Ionicons name="notifications-off-outline" size={36} color="#C8DFF0" />
               <Text style={styles.emptyTitle}>
                 {filter === 'unread' ? 'No unread notifications' : 'No notifications yet'}
@@ -215,37 +252,49 @@ export default function NotificationInbox() {
                   ? "You're all caught up."
                   : 'Notifications about your grades, enrollment, and advising will appear here.'}
               </Text>
-            </View>
+            </FadeInSection>
           ) : (
-            displayed.map(item => (
-              <NotificationCard
+            displayed.map((item, index) => (
+              // Index-based delay staggers the initial list, while a notification
+              // arriving live lands at index 0 and enters immediately. layout is
+              // what slides the existing cards down to make room for it.
+              <Animated.View
                 key={item.id}
-                item={item}
-                onPress={handleCardPress}
-                onLongPress={handleLongPress}
-                selectMode={selectMode}
-                selected={selectedIds.has(item.id)}
-              />
+                entering={FadeInDown.delay(index * 40).duration(motionDuration.base)}
+                exiting={FadeOut.duration(motionDuration.fast)}
+                layout={LinearTransition.duration(motionDuration.base)}
+              >
+                <NotificationCard
+                  item={item}
+                  onPress={handleCardPress}
+                  onLongPress={handleLongPress}
+                  selectMode={selectMode}
+                  selected={selectedIds.has(item.id)}
+                />
+              </Animated.View>
             ))
           )}
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
       {selectMode && (
-        <View style={[styles.selectBar, { paddingBottom: insets.bottom + 12 }]}>
-          <TouchableOpacity style={styles.selectBarCancel} onPress={handleCancelSelect} activeOpacity={0.7}>
+        <Animated.View
+          style={[styles.selectBar, { paddingBottom: insets.bottom + 12 }]}
+          entering={FadeInDown.duration(motionDuration.base)}
+          exiting={FadeOut.duration(motionDuration.fast)}
+        >
+          <PressableScale style={styles.selectBarCancel} onPress={handleCancelSelect}>
             <Text style={styles.selectBarCancelText}>Cancel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          </PressableScale>
+          <PressableScale
             style={[styles.selectBarDelete, selectedIds.size === 0 && styles.selectBarDeleteDisabled]}
             onPress={handleDeleteSelected}
             disabled={selectedIds.size === 0}
-            activeOpacity={0.8}
           >
             <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
             <Text style={styles.selectBarDeleteText}>Delete ({selectedIds.size})</Text>
-          </TouchableOpacity>
-        </View>
+          </PressableScale>
+        </Animated.View>
       )}
 
       <NotificationDetailModal item={viewingItem} onClose={() => setViewingItem(null)} />

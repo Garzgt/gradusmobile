@@ -2,12 +2,16 @@ import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   StyleSheet,
-  TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, {
+  FadeIn,
+  LinearTransition,
+  useAnimatedScrollHandler,
+  useSharedValue,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Print from 'expo-print';
@@ -18,6 +22,12 @@ import { useAuth } from '../../context/AuthContext';
 import { useAlert } from '../../context/AlertContext';
 import { useToast } from '../../context/ToastContext';
 import { supabase } from '../../config/supabase';
+import FadeInSection from '../../components/animated/FadeInSection';
+import StaggeredList from '../../components/animated/StaggeredList';
+import PressableScale from '../../components/animated/PressableScale';
+import CountUpNumber from '../../components/animated/CountUpNumber';
+import useParallaxMotion from '../../animations/useParallaxMotion';
+import { duration as motionDuration } from '../../animations/motionTokens';
 import ScheduleGrid from './components/ScheduleGrid';
 import CourseTableView from './components/CourseTableView';
 
@@ -473,94 +483,113 @@ export default function AdvisingFormPreview() {
     }
   };
 
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((event) => {
+    scrollY.value = event.contentOffset.y;
+  });
+  const orbStyle = useParallaxMotion(scrollY, { factor: 0.25, clamp: 220 });
+
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <View style={styles.decOrb} />
-        <TouchableOpacity
+        <Animated.View style={[styles.decOrb, orbStyle]} />
+        <PressableScale
           style={styles.backBtn}
+          scaleTo={0.86}
+          hitSlop={8}
           onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
         >
           <Ionicons name="chevron-back" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
+        </PressableScale>
         <Text style={styles.headerLabel}>ADVISING</Text>
         <Text style={styles.headerTitle}>Form Preview</Text>
         <Text style={styles.headerSub}>{termLabel || 'Active Term'}</Text>
       </View>
 
-      <ScrollView
+      <Animated.ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
       >
-        <View style={styles.summaryCard}>
+        <FadeInSection index={0} style={styles.summaryCard}>
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryNum}>{assigned.length}</Text>
+            <CountUpNumber value={assigned.length} decimals={0} style={styles.summaryNum} />
             <Text style={styles.summaryLbl}>Scheduled</Text>
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryNum}>{totalUnits}</Text>
+            <CountUpNumber
+              value={totalUnits}
+              decimals={Number.isInteger(Number(totalUnits)) ? 0 : 1}
+              style={styles.summaryNum}
+            />
             <Text style={styles.summaryLbl}>Total Units</Text>
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryItem}>
-            <Text style={[styles.summaryNum, unscheduled.length > 0 && styles.summaryNumWarn]}>
-              {unscheduled.length}
-            </Text>
+            <CountUpNumber
+              value={unscheduled.length}
+              decimals={0}
+              style={[styles.summaryNum, unscheduled.length > 0 && styles.summaryNumWarn]}
+            />
             <Text style={styles.summaryLbl}>Unscheduled</Text>
           </View>
-        </View>
+        </FadeInSection>
 
         {assigned.length > 0 && (
-          <>
+          <FadeInSection index={1}>
             <View style={{ height: 10 }} />
             <ScheduleGrid entries={assigned} subjectColors={subjectColors} />
             <View style={{ height: 8 }} />
             <CourseTableView assigned={assigned} subjectColors={subjectColors} />
-          </>
+          </FadeInSection>
         )}
 
         {unscheduled.length > 0 && (
-          <>
+          <FadeInSection index={2}>
             <Text style={styles.sectionLabel}>COULD NOT BE SCHEDULED</Text>
-            <View style={styles.warnBanner}>
+            <Animated.View style={styles.warnBanner} entering={FadeIn.duration(motionDuration.base)}>
               <Ionicons name="alert-circle-outline" size={16} color="#B7770D" />
               <Text style={styles.warnText}>
                 {unscheduled.length} subject{unscheduled.length > 1 ? 's' : ''} could not be
                 fitted. Coordinate with your adviser.
               </Text>
-            </View>
-            {unscheduled.map((item, i) => (
-              <View key={i} style={styles.unscheduledRow}>
-                <View style={styles.codeTagWarn}>
-                  <Text style={styles.codeTextWarn}>{item.subjectCode}</Text>
+            </Animated.View>
+            <StaggeredList step={40} delay={120}>
+              {unscheduled.map((item, i) => (
+                <View key={i} style={styles.unscheduledRow}>
+                  <View style={styles.codeTagWarn}>
+                    <Text style={styles.codeTextWarn}>{item.subjectCode}</Text>
+                  </View>
+                  <Text style={styles.unscheduledReason} numberOfLines={2}>
+                    {item.reason}
+                  </Text>
                 </View>
-                <Text style={styles.unscheduledReason} numberOfLines={2}>
-                  {item.reason}
-                </Text>
-              </View>
-            ))}
-          </>
+              ))}
+            </StaggeredList>
+          </FadeInSection>
         )}
 
         {assigned.length === 0 && unscheduled.length === 0 && (
-          <View style={styles.emptyCard}>
+          <FadeInSection index={1} style={styles.emptyCard}>
             <Ionicons name="document-outline" size={32} color="#C8DFF0" />
             <Text style={styles.emptyTitle}>No plan generated</Text>
             <Text style={styles.emptyText}>
               Go back and select subjects to build your plan.
             </Text>
-          </View>
+          </FadeInSection>
         )}
 
         {assigned.length > 0 && (
-          <TouchableOpacity
+          <FadeInSection index={3}>
+          <PressableScale
             style={[styles.generateBtn, generating && styles.generateBtnDisabled]}
+            scaleTo={0.97}
             onPress={handleGenerateForm}
             disabled={generating}
-            activeOpacity={0.85}
+            layout={LinearTransition.duration(motionDuration.base)}
           >
             {generating
               ? <ActivityIndicator size="small" color="#FFFFFF" />
@@ -569,11 +598,12 @@ export default function AdvisingFormPreview() {
             <Text style={styles.generateText}>
               {generating ? 'Generating...' : 'Generate Pre-Registration Form'}
             </Text>
-          </TouchableOpacity>
+          </PressableScale>
+          </FadeInSection>
         )}
 
         <View style={{ height: insets.bottom + 100 }} />
-      </ScrollView>
+      </Animated.ScrollView>
     </SafeAreaView>
   );
 }

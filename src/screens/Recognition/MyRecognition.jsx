@@ -1,10 +1,15 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, ScrollView, RefreshControl, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, RefreshControl, StyleSheet } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import SkeletonBox from '../../components/SkeletonLoader';
+import FadeInSection from '../../components/animated/FadeInSection';
+import StaggeredList from '../../components/animated/StaggeredList';
+import PressableScale from '../../components/animated/PressableScale';
+import useParallaxMotion from '../../animations/useParallaxMotion';
 import { fetchMyHonors, fetchStudentRankings } from './services/recognitionService';
 import HonorCard from './components/HonorCard';
 import RankingCard from './components/RankingCard';
@@ -21,6 +26,12 @@ export default function MyRecognition() {
   const [rankings, setRankings] = useState(null);
   const [programCode, setProgramCode] = useState(null);
   const [error, setError] = useState('');
+
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((event) => {
+    scrollY.value = event.contentOffset.y;
+  });
+  const orbStyle = useParallaxMotion(scrollY, { factor: 0.25, clamp: 200 });
 
   const loadData = useCallback(async (isRefresh = false) => {
     if (!user) { setLoading(false); return; }
@@ -57,24 +68,27 @@ export default function MyRecognition() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <View style={styles.decOrb} />
+        <Animated.View style={[styles.decOrb, orbStyle]} />
         <View style={styles.headerTop}>
-          <TouchableOpacity
+          <PressableScale
             style={styles.backBtn}
+            scaleTo={0.86}
+            hitSlop={8}
             onPress={() => navigation.goBack()}
-            activeOpacity={0.7}
           >
             <Ionicons name="arrow-back" size={20} color="rgba(255,255,255,0.85)" />
-          </TouchableOpacity>
+          </PressableScale>
         </View>
         <Text style={styles.headerLabel}>RECOGNITION</Text>
         <Text style={styles.headerTitle}>My Recognition</Text>
         <Text style={styles.headerSub}>Academic honors & awards</Text>
       </View>
 
-      <ScrollView
+      <Animated.ScrollView
         style={styles.scroll}
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -84,42 +98,48 @@ export default function MyRecognition() {
           />
         }
       >
-        <TouchableOpacity
-          style={styles.criteriaBtn}
-          onPress={() => navigation.navigate(routes.RECOGNITION_CRITERIA)}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="information-circle-outline" size={16} color="#2A7AB6" />
-          <Text style={styles.criteriaBtnText}>View Honor Criteria</Text>
-          <Ionicons name="chevron-forward" size={14} color="#2A7AB6" />
-        </TouchableOpacity>
+        <FadeInSection index={0}>
+          <PressableScale
+            style={styles.criteriaBtn}
+            onPress={() => navigation.navigate(routes.RECOGNITION_CRITERIA)}
+          >
+            <Ionicons name="information-circle-outline" size={16} color="#2A7AB6" />
+            <Text style={styles.criteriaBtnText}>View Honor Criteria</Text>
+            <Ionicons name="chevron-forward" size={14} color="#2A7AB6" />
+          </PressableScale>
+        </FadeInSection>
 
         {rankings && (
-          <RankingCard rankings={rankings} programCode={programCode} />
+          <FadeInSection index={1}>
+            <RankingCard rankings={rankings} programCode={programCode} />
+          </FadeInSection>
         )}
 
         <View style={styles.listSection}>
-          <View style={styles.sectionLabelCard}>
-            <Text style={styles.sectionLabelText}>Earned Honors</Text>
-          </View>
+          <FadeInSection index={2}>
+            <View style={styles.sectionLabelCard}>
+              <Text style={styles.sectionLabelText}>Earned Honors</Text>
+            </View>
+          </FadeInSection>
 
           {loading ? (
             <RecognitionSkeleton />
           ) : error ? (
-            <View style={styles.emptyCard}>
+            <FadeInSection style={styles.emptyCard}>
               <Ionicons name="alert-circle-outline" size={32} color="#C8DFF0" />
               <Text style={styles.emptyTitle}>{error}</Text>
-            </View>
+            </FadeInSection>
           ) : honors.length === 0 ? (
-            <View style={styles.emptyCard}>
+            <FadeInSection style={styles.emptyCard}>
               <Ionicons name="trophy-outline" size={36} color="#C8DFF0" />
               <Text style={styles.emptyTitle}>No honors yet</Text>
               <Text style={styles.emptyText}>
                 Keep your GWA within the qualifying range and complete all subjects to earn an academic honor.
               </Text>
-            </View>
+            </FadeInSection>
           ) : (
-            honors.map(item => (
+            <StaggeredList step={60} delay={160}>
+            {honors.map(item => (
               <HonorCard
                 key={item.id}
                 item={item}
@@ -128,10 +148,11 @@ export default function MyRecognition() {
                   setHonors(prev => prev.map(h => (h.id === id ? { ...h, certificate_url: url } : h)));
                 }}
               />
-            ))
+            ))}
+            </StaggeredList>
           )}
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
     </SafeAreaView>
   );
 }

@@ -11,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../../context/AuthContext';
-import { fetchUnreadCount } from '../../Notifications/services/notificationService';
+import { fetchUnreadCount, subscribeToNotifications } from '../../Notifications/services/notificationService';
 import routes from '../../../config/routes';
 import PressableScale from '../../../components/animated/PressableScale';
 import useParallaxMotion from '../../../animations/useParallaxMotion';
@@ -66,6 +66,19 @@ export default function DashboardHeader({ student, scrollY }) {
     const sub = Notifications.addNotificationReceivedListener(refreshUnreadCount);
     return () => sub.remove();
   }, [refreshUnreadCount]);
+
+  // Covers what the push listener above cannot: a row written straight to the
+  // table with no push behind it, and reads/deletes performed on another device.
+  // Re-counting on each event rather than tracking a delta locally keeps the
+  // badge honest no matter which screen changed the row.
+  useEffect(() => {
+    if (!user) return undefined;
+    return subscribeToNotifications(user.id, {
+      onInsert: refreshUnreadCount,
+      onUpdate: refreshUnreadCount,
+      onDelete: refreshUnreadCount,
+    });
+  }, [user?.id, refreshUnreadCount]);
 
   const firstName = student?.first_name ?? '';
   const lastName = student?.last_name ?? '';

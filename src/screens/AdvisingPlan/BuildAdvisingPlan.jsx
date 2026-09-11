@@ -2,13 +2,21 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
-  ScrollView,
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, {
+  FadeIn,
+  LinearTransition,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSequence,
+  withSpring,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -17,6 +25,10 @@ import { useAlert } from '../../context/AlertContext';
 import { supabase } from '../../config/supabase';
 import routes from '../../config/routes';
 import SkeletonBox from '../../components/SkeletonLoader';
+import FadeInSection from '../../components/animated/FadeInSection';
+import PressableScale from '../../components/animated/PressableScale';
+import useParallaxMotion from '../../animations/useParallaxMotion';
+import { duration as motionDuration, spring as motionSpring } from '../../animations/motionTokens';
 import SubjectPoolList from './components/SubjectPoolList';
 import { buildEligiblePools, formatSemesterLabel, fetchScheduleEntriesForSubjects } from './services/advisingPlanService';
 import { autoAssignFromSchedule } from './services/advisingValidationService';
@@ -51,6 +63,12 @@ export default function BuildAdvisingPlan() {
   const [teacherSelections, setTeacherSelections] = useState({});
   const [error, setError] = useState('');
   const hasLoadedRef = useRef(false);
+
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((event) => {
+    scrollY.value = event.contentOffset.y;
+  });
+  const orbStyle = useParallaxMotion(scrollY, { factor: 0.25, clamp: 220 });
 
   const loadData = useCallback(async (isRefresh = false) => {
     if (!user) {
@@ -289,6 +307,21 @@ export default function BuildAdvisingPlan() {
 
   const hasScan = scanData?.subjects?.length > 0;
   const selectedCount = selectedKeys.size;
+
+  // Pops on every change rather than counting: this value moves with each tap,
+  // and a rolling number would always be chasing the user.
+  const reducedMotion = useReducedMotion();
+  const pillScale = useSharedValue(1);
+  useEffect(() => {
+    if (reducedMotion) return;
+    pillScale.value = withSequence(
+      withSpring(1.18, motionSpring.pop),
+      withSpring(1, motionSpring.soft)
+    );
+  }, [selectedCount, reducedMotion]);
+  const pillStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pillScale.value }],
+  }));
   const totalEligible = allEligible.length;
   const missingSetup = hasScan && (!student?.current_year_level || !termSemester);
   const noEligibleSubjects = hasScan
@@ -308,22 +341,24 @@ export default function BuildAdvisingPlan() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <View style={styles.decOrb} />
+        <Animated.View style={[styles.decOrb, orbStyle]} />
         <Text style={styles.headerLabel}>ADVISING</Text>
         <Text style={styles.headerTitle}>Build Plan</Text>
         <Text style={styles.headerSub}>Select subjects for this term</Text>
       </View>
 
-      <ScrollView
+      <Animated.ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2A7AB6" />
         }
       >
         {/* Info strip */}
-        <View style={styles.infoStrip}>
+        <FadeInSection index={0} style={styles.infoStrip}>
           <View style={styles.infoStripLeft}>
             <Text style={styles.infoStripTerm} numberOfLines={1}>{termLabel}</Text>
             <View style={styles.infoChipRow}>
@@ -350,40 +385,40 @@ export default function BuildAdvisingPlan() {
               </View>
             )}
             {hasScan && (
-              <TouchableOpacity
+              <PressableScale
                 style={styles.resetBtn}
+                scaleTo={0.88}
                 onPress={handleResetPress}
-                activeOpacity={0.8}
               >
                 <Ionicons name="refresh-outline" size={15} color="#5A7A9A" />
-              </TouchableOpacity>
+              </PressableScale>
             )}
-            <TouchableOpacity
+            <PressableScale
               style={styles.viewerBtn}
+              scaleTo={0.88}
               onPress={() => navigation.navigate(routes.EVALUATION_VIEWER)}
-              activeOpacity={0.8}
             >
               <Ionicons name="scan-outline" size={15} color="#2A7AB6" />
-            </TouchableOpacity>
+            </PressableScale>
           </View>
-        </View>
+        </FadeInSection>
 
         {/* Error banner */}
         {error ? (
-          <View style={styles.alertBanner}>
+          <Animated.View style={styles.alertBanner} entering={FadeIn.duration(motionDuration.base)}>
             <Ionicons name="alert-circle-outline" size={15} color="#C0392B" />
             <Text style={styles.alertText}>{error}</Text>
-          </View>
+          </Animated.View>
         ) : null}
 
         {/* Missing setup warning */}
         {missingSetup ? (
-          <View style={[styles.alertBanner, styles.alertWarn]}>
+          <Animated.View style={[styles.alertBanner, styles.alertWarn]} entering={FadeIn.duration(motionDuration.base)}>
             <Ionicons name="alert-circle-outline" size={15} color="#B7770D" />
             <Text style={[styles.alertText, { color: '#B7770D' }]}>
               Missing active term or year level. Check your profile.
             </Text>
-          </View>
+          </Animated.View>
         ) : null}
 
         {/* Loading skeleton */}
@@ -397,22 +432,21 @@ export default function BuildAdvisingPlan() {
           </View>
         ) : !hasScan ? (
           /* No scan state */
-          <View style={styles.emptyCard}>
+          <FadeInSection index={1} style={styles.emptyCard}>
             <Ionicons name="scan-outline" size={28} color="#C8DFF0" />
             <Text style={styles.emptyTitle}>No scan data</Text>
             <Text style={styles.emptyText}>Scan your evaluation to load subjects.</Text>
-            <TouchableOpacity
+            <PressableScale
               style={styles.emptyButton}
               onPress={() => navigation.navigate(routes.EVALUATION_VIEWER)}
-              activeOpacity={0.8}
             >
               <Text style={styles.emptyButtonText}>Open Evaluation Viewer</Text>
-            </TouchableOpacity>
-          </View>
+            </PressableScale>
+          </FadeInSection>
         ) : isRegularStudent ? (
           /* Regular student: no back/blocked subjects — this tool is for building an
              irregular student's catch-up plan, not for a normal on-track enrollment. */
-          <View style={styles.emptyCard}>
+          <FadeInSection index={1} style={styles.emptyCard}>
             <Ionicons name="checkmark-circle-outline" size={28} color="#1a6e4a" />
             <Text style={styles.emptyTitle}>You're on the regular track</Text>
             <Text style={styles.emptyText}>
@@ -420,17 +454,17 @@ export default function BuildAdvisingPlan() {
               for building a catch-up plan for irregular students — since you're on
               track, please enroll through the standard process instead.
             </Text>
-          </View>
+          </FadeInSection>
         ) : (
           <>
             {/* Subject list card */}
-            <View style={styles.subjectCard}>
+            <FadeInSection index={1} style={styles.subjectCard}>
               <View style={styles.subjectCardHeader}>
                 <Text style={styles.subjectCardTitle}>ELIGIBLE SUBJECTS</Text>
                 {totalEligible > 0 && (
-                  <View style={styles.selectionPill}>
+                  <Animated.View style={[styles.selectionPill, pillStyle]}>
                     <Text style={styles.selectionPillText}>{selectedCount}/{totalEligible}</Text>
-                  </View>
+                  </Animated.View>
                 )}
               </View>
 
@@ -451,14 +485,16 @@ export default function BuildAdvisingPlan() {
                   onTeacherSelect={setTeacherForSubject}
                 />
               )}
-            </View>
+            </FadeInSection>
 
             {/* Generate button */}
-            <TouchableOpacity
+            <FadeInSection index={2}>
+            <PressableScale
               style={[styles.generateBtn, (!canGeneratePlan || generating) && styles.generateBtnDisabled]}
+              scaleTo={0.97}
               onPress={handleGeneratePlan}
               disabled={!canGeneratePlan || generating}
-              activeOpacity={0.85}
+              layout={LinearTransition.duration(motionDuration.base)}
             >
               {generating ? (
                 <ActivityIndicator color="#FFFFFF" size="small" />
@@ -474,12 +510,13 @@ export default function BuildAdvisingPlan() {
                       ? 'Choose a teacher for each subject'
                       : `Generate Plan · ${selectedCount} subject${selectedCount !== 1 ? 's' : ''}`}
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
+            </FadeInSection>
           </>
         )}
 
         <View style={{ height: 100 }} />
-      </ScrollView>
+      </Animated.ScrollView>
     </SafeAreaView>
   );
 }

@@ -1,6 +1,19 @@
-import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import React, { useEffect, useMemo } from 'react';
+import { View, Text } from 'react-native';
+import Animated, {
+  FadeIn,
+  FadeOut,
+  LinearTransition,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSequence,
+  withSpring,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
+import PressableScale from '../../../components/animated/PressableScale';
+import StaggeredList from '../../../components/animated/StaggeredList';
+import { duration as motionDuration, spring as motionSpring } from '../../../animations/motionTokens';
 import styles from './SubjectPoolList.styles';
 
 function getTeacherName(teacher) {
@@ -43,15 +56,37 @@ function groupByTeacher(entries) {
 
 function SubjectRow({ subject, subjectKey, isSelected, onToggle, entries, chosenTeacherId, onTeacherSelect }) {
   const teachers = useMemo(() => groupByTeacher(entries), [entries]);
+  const reduced = useReducedMotion();
+
+  // Selecting a subject is the whole point of this screen, so the tick gets a
+  // real overshoot rather than appearing fully drawn.
+  const check = useSharedValue(isSelected ? 1 : 0);
+  useEffect(() => {
+    if (reduced) {
+      check.value = isSelected ? 1 : 0;
+      return;
+    }
+    check.value = isSelected
+      ? withSequence(withSpring(1.25, motionSpring.pop), withSpring(1, motionSpring.soft))
+      : withSpring(0, motionSpring.soft);
+  }, [isSelected, reduced]);
+
+  const checkStyle = useAnimatedStyle(() => ({
+    opacity: check.value,
+    transform: [{ scale: check.value }],
+  }));
 
   return (
-    <TouchableOpacity
+    <PressableScale
       style={[styles.row, isSelected && styles.rowSelected]}
+      scaleTo={0.99}
       onPress={() => onToggle && onToggle(subjectKey)}
-      activeOpacity={0.75}
+      layout={LinearTransition.duration(motionDuration.base)}
     >
       <View style={[styles.checkCircle, isSelected && styles.checkCircleSelected]}>
-        {isSelected ? <Ionicons name="checkmark" size={14} color="#FFFFFF" /> : null}
+        <Animated.View style={checkStyle}>
+          <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+        </Animated.View>
       </View>
       <View style={styles.rowBody}>
         <View style={styles.codeRow}>
@@ -69,17 +104,21 @@ function SubjectRow({ subject, subjectKey, isSelected, onToggle, entries, chosen
         <Text style={styles.nameText} numberOfLines={2}>{subject.subjectName}</Text>
 
         {isSelected && (
-          <View style={styles.teacherPicker}>
+          <Animated.View
+            style={styles.teacherPicker}
+            entering={FadeIn.duration(motionDuration.base)}
+            exiting={FadeOut.duration(motionDuration.fast)}
+          >
             <Text style={styles.teacherPickerLabel}>PICK A TEACHER</Text>
             {teachers.length > 0 ? (
               teachers.map((t) => {
                 const isChosen = chosenTeacherId === t.teacherId;
                 return (
-                  <TouchableOpacity
+                  <PressableScale
                     key={t.teacherId}
                     style={[styles.teacherOption, isChosen && styles.teacherOptionChosen]}
+                    scaleTo={0.98}
                     onPress={() => onTeacherSelect?.(subjectKey, t)}
-                    activeOpacity={0.7}
                   >
                     <View style={[styles.teacherRadio, isChosen && styles.teacherRadioChosen]}>
                       {isChosen && <View style={styles.teacherRadioDot} />}
@@ -92,7 +131,7 @@ function SubjectRow({ subject, subjectKey, isSelected, onToggle, entries, chosen
                         </View>
                       )}
                     </View>
-                  </TouchableOpacity>
+                  </PressableScale>
                 );
               })
             ) : (
@@ -101,10 +140,10 @@ function SubjectRow({ subject, subjectKey, isSelected, onToggle, entries, chosen
                 <Text style={styles.teacherNoScheduleText}>No teacher assigned yet.</Text>
               </View>
             )}
-          </View>
+          </Animated.View>
         )}
       </View>
-    </TouchableOpacity>
+    </PressableScale>
   );
 }
 
@@ -130,6 +169,7 @@ export default function SubjectPoolList({
 
   return (
     <View>
+      <StaggeredList step={35}>
       {list.map((subject, index) => {
         const key = subject.key || `${subject.subjectCode}-${index}`;
         const isSelected = selected.has(key);
@@ -140,7 +180,7 @@ export default function SubjectPoolList({
         const isSectionBreak = prevSubject?.isBack === true && !subject.isBack;
 
         return (
-          <View key={key}>
+          <Animated.View key={key} layout={LinearTransition.duration(motionDuration.base)}>
             {isSectionBreak ? (
               <View style={styles.sectionBreak}>
                 <View style={styles.sectionBreakLine} />
@@ -159,9 +199,10 @@ export default function SubjectPoolList({
               chosenTeacherId={chosenTeacherId}
               onTeacherSelect={onTeacherSelect}
             />
-          </View>
+          </Animated.View>
         );
       })}
+      </StaggeredList>
     </View>
   );
 }

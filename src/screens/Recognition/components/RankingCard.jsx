@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import CountUpNumber from '../../../components/animated/CountUpNumber';
 
 export default function RankingCard({ rankings, programCode }) {
   const { department_rank, campus_rank, in_top25_department, in_top25_campus } = rankings;
@@ -20,7 +21,9 @@ export default function RankingCard({ rankings, programCode }) {
           </View>
           {in_top25_department ? (
             <View style={styles.rankValueRow}>
-              <Text style={styles.rankNumber}># {department_rank}</Text>
+              <Text style={styles.rankNumber}>
+                # <CountUpNumber value={department_rank} decimals={0} style={styles.rankNumber} />
+              </Text>
               <Text style={styles.rankLabel}>{programCode ?? 'Department'}</Text>
             </View>
           ) : (
@@ -37,7 +40,13 @@ export default function RankingCard({ rankings, programCode }) {
                 <Text style={styles.rankScope}>CAMPUS-WIDE</Text>
               </View>
               <View style={styles.rankValueRow}>
-                <Text style={[styles.rankNumber, { color: '#D97706' }]}># {campus_rank}</Text>
+                <Text style={[styles.rankNumber, { color: '#D97706' }]}>
+                # <CountUpNumber
+                    value={campus_rank}
+                    decimals={0}
+                    style={[styles.rankNumber, { color: '#D97706' }]}
+                  />
+              </Text>
                 <Text style={styles.rankLabel}>All Programs</Text>
               </View>
             </View>
