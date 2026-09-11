@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, StyleSheet, RefreshControl } from 'react-native';
+import { View, StyleSheet, RefreshControl } from 'react-native';
+import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../config/supabase';
+import FadeInSection from '../../components/animated/FadeInSection';
 import DashboardHeader from './components/DashboardHeader';
 import ActiveTermCard from './components/ActiveTermCard';
 import GradeSnapshotCard from './components/GradeSnapshotCard';
@@ -14,6 +16,11 @@ export default function HomeDashboard() {
   const [studentLoaded, setStudentLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((event) => {
+    scrollY.value = event.contentOffset.y;
+  });
 
   const loadStudent = async () => {
     const { data } = await supabase
@@ -36,21 +43,29 @@ export default function HomeDashboard() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <DashboardHeader student={student} />
-      <ScrollView
+      <FadeInSection index={0}>
+        <DashboardHeader student={student} scrollY={scrollY} />
+      </FadeInSection>
+      <Animated.ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2A7AB6" />
         }
       >
-        <ActiveTermCard refreshKey={refreshKey} />
-        <GradeSnapshotCard studentId={student?.id} refreshKey={refreshKey} />
-        <View style={styles.enrollWrap}>
+        <FadeInSection index={1}>
+          <ActiveTermCard refreshKey={refreshKey} />
+        </FadeInSection>
+        <FadeInSection index={2}>
+          <GradeSnapshotCard studentId={student?.id} refreshKey={refreshKey} />
+        </FadeInSection>
+        <FadeInSection index={3} style={styles.enrollWrap}>
           <EnrollmentStatusCard studentId={student?.id} ready={studentLoaded} refreshKey={refreshKey} />
-        </View>
-      </ScrollView>
+        </FadeInSection>
+      </Animated.ScrollView>
     </SafeAreaView>
   );
 }

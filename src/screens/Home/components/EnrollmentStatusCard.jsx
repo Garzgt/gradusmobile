@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { supabase } from '../../../config/supabase';
 import SkeletonBox from '../../../components/SkeletonLoader';
+import StaggeredList from '../../../components/animated/StaggeredList';
 
 const STATUS_CONFIG = {
   enrolled: { label: 'Enrolled', color: '#1a6e4a', bg: '#E8F5EE', icon: 'checkmark-circle' },
@@ -82,14 +83,15 @@ export default function EnrollmentStatusCard({ studentId, ready = false, refresh
           ))}
         </View>
       ) : isEnrolled ? (
-        <>
+        <View>
           <ScrollView
             style={styles.subjectScroll}
             nestedScrollEnabled
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.subjectList}>
-              {subjects.map((row, i) => {
+              <StaggeredList step={45}>
+                {subjects.map((row, i) => {
                 const subject = row.class_offering?.subject;
                 const code = subject?.subject_code ?? '—';
                 const name = subject?.title ?? '';
@@ -105,14 +107,15 @@ export default function EnrollmentStatusCard({ studentId, ready = false, refresh
                       ) : null}
                     </View>
                   </View>
-                );
-              })}
+                  );
+                })}
+              </StaggeredList>
             </View>
           </ScrollView>
           {subjects.length === 10 && (
             <Text style={styles.more}>+ more subjects enrolled</Text>
           )}
-        </>
+        </View>
       ) : (
         <View style={styles.emptyState}>
           <Ionicons name="calendar-outline" size={30} color="#C8DFF0" />

@@ -10,6 +10,7 @@ import RecognitionCriteria from '../screens/Recognition/RecognitionCriteria';
 import BrandedLoader from '../components/BrandedLoader';
 import { hideSplash } from '../config/splash';
 import routes from '../config/routes';
+import { screenTransitions } from '../animations/transitions';
 import DomainBlocked from '../screens/Auth/DomainBlocked';
 import AccountDeactivated from '../screens/Auth/AccountDeactivated';
 import ProfileSetup from '../screens/ProfileSetup/ProfileSetup';
@@ -29,7 +30,7 @@ export default function AppNavigator() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator screenOptions={{ headerShown: false, ...screenTransitions.push }}>
         {isDomainBlocked ? (
           <Stack.Screen name={routes.DOMAIN_BLOCKED} component={DomainBlocked} />
         ) : isDeactivated ? (
@@ -41,7 +42,11 @@ export default function AppNavigator() {
         ) : (
           <>
             <Stack.Screen name="StudentApp" component={StudentTabNavigator} />
-            <Stack.Screen name={routes.NOTIFICATIONS} component={NotificationInbox} />
+            <Stack.Screen
+              name={routes.NOTIFICATIONS}
+              component={NotificationInbox}
+              options={screenTransitions.modal}
+            />
             <Stack.Screen name={routes.MY_RECOGNITION} component={MyRecognition} />
             <Stack.Screen name={routes.RECOGNITION_CRITERIA} component={RecognitionCriteria} />
           </>

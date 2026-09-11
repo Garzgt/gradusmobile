@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../../../config/supabase';
 import routes from '../../../config/routes';
 import SkeletonBox from '../../../components/SkeletonLoader';
+import CountUpNumber from '../../../components/animated/CountUpNumber';
+import PressableScale from '../../../components/animated/PressableScale';
+import { duration } from '../../../animations/motionTokens';
 import { computeTermGwa } from '../../Grades/services/gradeService';
 
 export default function GradeSnapshotCard({ studentId, refreshKey }) {
@@ -72,17 +76,22 @@ export default function GradeSnapshotCard({ studentId, refreshKey }) {
   }, [studentId, refreshKey]);
 
   return (
-    <TouchableOpacity
+    <PressableScale
       style={styles.card}
       onPress={() => navigation.navigate(routes.GRADES)}
-      activeOpacity={0.85}
     >
       <View style={styles.left}>
         <Text style={styles.label}>CURRENT GWA</Text>
         {loading ? (
           <SkeletonBox width={110} height={52} borderRadius={10} style={{ marginTop: 6, marginBottom: 4 }} />
         ) : (
-          <Text style={[styles.gwa, !gwa && styles.gwaDash]}>{gwa ?? '—'}</Text>
+          <Animated.View entering={FadeIn.duration(duration.base)}>
+            <CountUpNumber
+              value={gwa}
+              decimals={4}
+              style={[styles.gwa, !gwa && styles.gwaDash]}
+            />
+          </Animated.View>
         )}
         <Text style={styles.sub}>
           {gwa ? `General Weighted Average` : 'No grades posted yet'}
@@ -98,7 +107,7 @@ export default function GradeSnapshotCard({ studentId, refreshKey }) {
           <Ionicons name="arrow-forward" size={14} color="#8BA4BC" />
         </View>
       </View>
-    </TouchableOpacity>
+    </PressableScale>
   );
 }
 

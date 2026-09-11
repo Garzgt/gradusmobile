@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../config/supabase';
 import SkeletonBox from '../../../components/SkeletonLoader';
+import { duration } from '../../../animations/motionTokens';
 
 const SEMESTER_LABEL = { 1: '1st Semester', 2: '2nd Semester', 3: 'Summer' };
 
@@ -56,12 +58,14 @@ export default function ActiveTermCard({ refreshKey }) {
                 <SkeletonBox width={90} height={12} borderRadius={5} />
               </View>
             ) : term ? (
-              <>
+              // gap:2 is re-declared here because this wrapper now sits between
+              // textGroup and the two lines it used to space directly.
+              <Animated.View style={{ gap: 2 }} entering={FadeIn.duration(duration.base)}>
                 <Text style={styles.termName}>
                   {SEMESTER_LABEL[term.semester] ?? `Semester ${term.semester}`}
                 </Text>
                 <Text style={styles.schoolYear}>A.Y. {term.school_year}</Text>
-              </>
+              </Animated.View>
             ) : (
               <Text style={styles.noTerm}>No active term set</Text>
             )}

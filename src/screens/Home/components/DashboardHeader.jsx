@@ -1,11 +1,21 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withSequence,
+  withSpring,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../../context/AuthContext';
 import { fetchUnreadCount } from '../../Notifications/services/notificationService';
 import routes from '../../../config/routes';
+import PressableScale from '../../../components/animated/PressableScale';
+import useParallaxMotion from '../../../animations/useParallaxMotion';
+import { spring } from '../../../animations/motionTokens';
 
 const getGreeting = () => {
   const h = new Date().getHours();
@@ -14,10 +24,33 @@ const getGreeting = () => {
   return 'Good evening';
 };
 
-export default function DashboardHeader({ student }) {
+export default function DashboardHeader({ student, scrollY }) {
   const navigation = useNavigation();
   const { user } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
+  const reduced = useReducedMotion();
+
+  // The orb drifts with the scroll; the badge row is the least important line
+  // here, so it thins out as the user moves down into the cards.
+  const orbStyle = useParallaxMotion(scrollY, { factor: 0.25, clamp: 200 });
+  const badgeRowStyle = useParallaxMotion(scrollY, { factor: 0.06, clamp: 120, fadeOver: 90 });
+
+  // Pops whenever the count changes, including 1 -> 2 while the app is open.
+  const badgeScale = useSharedValue(0);
+  useEffect(() => {
+    if (unreadCount <= 0) {
+      badgeScale.value = withSpring(0, spring.soft);
+      return;
+    }
+    badgeScale.value = reduced
+      ? 1
+      : withSequence(withSpring(1.25, spring.pop), withSpring(1, spring.soft));
+  }, [unreadCount, reduced]);
+
+  const badgeStyle = useAnimatedStyle(() => ({
+    opacity: badgeScale.value > 0 ? 1 : 0,
+    transform: [{ scale: badgeScale.value }],
+  }));
 
   const refreshUnreadCount = useCallback(() => {
     if (!user) return;
@@ -45,7 +78,7 @@ export default function DashboardHeader({ student }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.decOrb} />
+      <Animated.View style={[styles.decOrb, orbStyle]} />
 
       <View style={styles.mainRow}>
         {/* Avatar */}
@@ -66,23 +99,22 @@ export default function DashboardHeader({ student }) {
               <Text style={styles.greeting}>{getGreeting()}</Text>
               <Text style={styles.name} numberOfLines={1}>{fullName}</Text>
             </View>
-            <TouchableOpacity
+            <PressableScale
               style={styles.bellBtn}
+              scaleTo={0.88}
               onPress={() => navigation.navigate(routes.NOTIFICATIONS)}
-              activeOpacity={0.7}
+              hitSlop={8}
             >
               <Ionicons name="notifications-outline" size={20} color="#FFFFFF" />
-              {unreadCount > 0 && (
-                <View style={styles.unreadBadge}>
-                  <Text style={styles.unreadBadgeText} numberOfLines={1}>
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
+              <Animated.View style={[styles.unreadBadge, badgeStyle]} pointerEvents="none">
+                <Text style={styles.unreadBadgeText} numberOfLines={1}>
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </Text>
+              </Animated.View>
+            </PressableScale>
           </View>
 
-          <View style={styles.badgeRow}>
+          <Animated.View style={[styles.badgeRow, badgeRowStyle]}>
             {email ? (
               <View style={styles.badge}>
                 <Ionicons name="mail-outline" size={10} color="rgba(255,255,255,0.45)" />
@@ -95,7 +127,7 @@ export default function DashboardHeader({ student }) {
                 <Text style={[styles.badgeText, styles.badgeBlueText]}>{programCode}</Text>
               </View>
             ) : null}
-          </View>
+          </Animated.View>
         </View>
       </View>
     </View>

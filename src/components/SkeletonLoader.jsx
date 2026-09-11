@@ -1,23 +1,17 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import React from 'react';
+import { StyleSheet, View } from 'react-native';
+import Animated from 'react-native-reanimated';
+import useShimmerPulse from '../animations/useShimmerPulse';
 
 export default function SkeletonBox({ width, height, borderRadius = 8, style }) {
-  const opacity = useRef(new Animated.Value(0.4)).current;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 1, duration: 700, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 0.4, duration: 700, useNativeDriver: true }),
-      ])
-    ).start();
-  }, []);
+  const pulse = useShimmerPulse();
 
   return (
     <Animated.View
       style={[
         styles.bone,
-        { width, height, borderRadius, opacity },
+        { width, height, borderRadius },
+        pulse,
         style,
       ]}
     />

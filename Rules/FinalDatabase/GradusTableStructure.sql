@@ -57,6 +57,8 @@ CREATE TABLE public.students (
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   sex text CHECK (sex IS NULL OR (sex = ANY (ARRAY['F'::text, 'M'::text]))),
   import_source text NOT NULL DEFAULT 'self_registered'::text CHECK (import_source = ANY (ARRAY['self_registered'::text, 'classlist_import'::text, 'manual_add'::text])),
+  is_transferee boolean NOT NULL DEFAULT false,
+  effective_cohort_year integer,
   CONSTRAINT students_pkey PRIMARY KEY (id),
   CONSTRAINT students_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(user_id),
   CONSTRAINT students_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id)
@@ -618,6 +620,18 @@ CREATE TABLE public.grade_period_settings (
   lab_max numeric NOT NULL DEFAULT 30,
   exam_max numeric NOT NULL DEFAULT 100,
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  q1_date text,
+  q2_date text,
+  q3_date text,
+  q4_date text,
+  q5_date text,
+  a1_date text,
+  a2_date text,
+  a3_date text,
+  a4_date text,
+  a5_date text,
+  lab_date text,
+  exam_date text,
   CONSTRAINT grade_period_settings_pkey PRIMARY KEY (class_offering_id, period),
   CONSTRAINT grade_period_settings_class_offering_id_fkey FOREIGN KEY (class_offering_id) REFERENCES public.class_offerings(id)
 );
@@ -657,4 +671,13 @@ CREATE TABLE public.grade_finalize_notifications (
   CONSTRAINT grade_finalize_notifications_pkey PRIMARY KEY (id),
   CONSTRAINT grade_finalize_notifications_class_offering_id_fkey FOREIGN KEY (class_offering_id) REFERENCES public.class_offerings(id),
   CONSTRAINT grade_finalize_notifications_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.students(id)
+);
+CREATE TABLE public.app_versions (
+  platform text NOT NULL CHECK (platform = ANY (ARRAY['android'::text, 'ios'::text])),
+  latest_version text NOT NULL,
+  min_supported_version text NOT NULL,
+  download_url text NOT NULL,
+  release_notes text,
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT app_versions_pkey PRIMARY KEY (platform)
 );
