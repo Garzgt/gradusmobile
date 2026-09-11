@@ -4,6 +4,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../config/supabase';
 import SkeletonBox from '../../../components/SkeletonLoader';
+import AnimatedBar from '../../../components/animated/AnimatedBar';
 import { duration } from '../../../animations/motionTokens';
 
 const SEMESTER_LABEL = { 1: '1st Semester', 2: '2nd Semester', 3: 'Summer' };
@@ -86,9 +87,11 @@ export default function ActiveTermCard({ refreshKey }) {
           </Text>
           {progressPct != null && (
             <>
-              <View style={styles.progressTrack}>
-                <View style={[styles.progressFill, { width: `${progressPct * 100}%` }]} />
-              </View>
+              <AnimatedBar
+                pct={progressPct * 100}
+                trackStyle={styles.progressTrack}
+                fillStyle={styles.progressFill}
+              />
               <Text style={styles.daysLeft}>
                 {daysLeft === 0 ? 'Ends today' : `${daysLeft} day${daysLeft === 1 ? '' : 's'} left`}
               </Text>

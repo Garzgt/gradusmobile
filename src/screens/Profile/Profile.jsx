@@ -1,14 +1,24 @@
 import React, { useCallback, useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, Image,
+  View, Text, StyleSheet, Image,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, {
+  FadeIn,
+  useAnimatedScrollHandler,
+  useSharedValue,
+} from 'react-native-reanimated';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { supabase } from '../../config/supabase';
 import SkeletonBox from '../../components/SkeletonLoader';
+import FadeInSection from '../../components/animated/FadeInSection';
+import StaggeredList from '../../components/animated/StaggeredList';
+import PressableScale from '../../components/animated/PressableScale';
+import useParallaxMotion from '../../animations/useParallaxMotion';
+import { duration as motionDuration } from '../../animations/motionTokens';
 import routes from '../../config/routes';
 import EditProfileModal from './components/EditProfileModal';
 
@@ -43,6 +53,12 @@ export default function Profile() {
   const [student, setStudent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editVisible, setEditVisible] = useState(false);
+
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((event) => {
+    scrollY.value = event.contentOffset.y;
+  });
+  const orbStyle = useParallaxMotion(scrollY, { factor: 0.25, clamp: 200 });
 
   const loadStudent = useCallback(async () => {
     if (!user) { setLoading(false); return; }
@@ -79,19 +95,21 @@ export default function Profile() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <View style={styles.decOrb} />
+        <Animated.View style={[styles.decOrb, orbStyle]} />
         <Text style={styles.headerLabel}>PROFILE</Text>
         <Text style={styles.headerTitle} numberOfLines={1}>{fullName || 'My Profile'}</Text>
         <Text style={styles.headerSub}>{student?.student_number ?? user?.email ?? ''}</Text>
       </View>
 
-      <ScrollView
+      <Animated.ScrollView
         style={styles.scroll}
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
       >
         {/* Avatar card */}
-        <View style={styles.avatarCard}>
+        <FadeInSection index={0} step={45} style={styles.avatarCard}>
           <View style={styles.avatarCircle}>
             {loading ? (
               <SkeletonBox width={88} height={88} borderRadius={44} />
@@ -107,37 +125,43 @@ export default function Profile() {
               <SkeletonBox width={100} height={13} borderRadius={6} />
             </View>
           ) : (
-            <>
+            <Animated.View
+              style={{ alignItems: 'center' }}
+              entering={FadeIn.duration(motionDuration.base)}
+            >
               <Text style={styles.avatarName}>{fullName || '—'}</Text>
               {student?.student_number ? (
                 <Text style={styles.avatarStudentNo}>{student.student_number}</Text>
               ) : null}
               {profile?.app_role ? (
-                <View style={styles.roleBadge}>
+                <Animated.View
+                  style={styles.roleBadge}
+                  entering={FadeIn.delay(motionDuration.base).duration(motionDuration.base)}
+                >
                   <Text style={styles.roleBadgeText}>{profile.app_role.toUpperCase()}</Text>
-                </View>
+                </Animated.View>
               ) : null}
-            </>
+            </Animated.View>
           )}
-        </View>
+        </FadeInSection>
 
         {/* Personal Information */}
-        <View style={[styles.sectionLabel, styles.sectionLabelRow]}>
+        <FadeInSection index={1} step={45} style={[styles.sectionLabel, styles.sectionLabelRow]}>
           <Text style={styles.sectionLabelText}>Personal Information</Text>
           {!loading && (
-            <TouchableOpacity
+            <PressableScale
               style={styles.editBtn}
+              scaleTo={0.92}
               onPress={() => setEditVisible(true)}
-              activeOpacity={0.8}
               hitSlop={8}
             >
               <Ionicons name="pencil" size={12} color="#2A7AB6" />
               <Text style={styles.editBtnText}>Edit</Text>
-            </TouchableOpacity>
+            </PressableScale>
           )}
-        </View>
+        </FadeInSection>
 
-        <View style={styles.infoCard}>
+        <FadeInSection index={2} step={45} style={styles.infoCard}>
           {loading ? (
             <View style={{ gap: 14, paddingVertical: 10 }}>
               {[1, 2, 3, 4, 5].map(i => (
@@ -145,22 +169,22 @@ export default function Profile() {
               ))}
             </View>
           ) : (
-            <>
+            <StaggeredList step={35} delay={150}>
               <InfoRow icon="person-outline"      label="Full Name"   value={fullName} />
               <InfoRow icon="card-outline"        label="Student No." value={student?.student_number} />
               <InfoRow icon="mail-outline"        label="Email"       value={student?.email ?? user?.email} />
               <InfoRow icon="call-outline"        label="Contact"     value={student?.contact_number} />
               <InfoRow icon="male-female-outline" label="Sex"         value={SEX_LABEL[student?.sex] ?? null} last />
-            </>
+            </StaggeredList>
           )}
-        </View>
+        </FadeInSection>
 
         {/* Academic Information */}
-        <View style={styles.sectionLabel}>
+        <FadeInSection index={3} step={45} style={styles.sectionLabel}>
           <Text style={styles.sectionLabelText}>Academic Information</Text>
-        </View>
+        </FadeInSection>
 
-        <View style={styles.infoCard}>
+        <FadeInSection index={4} step={45} style={styles.infoCard}>
           {loading ? (
             <View style={{ gap: 14, paddingVertical: 10 }}>
               {[1, 2].map(i => (
@@ -186,13 +210,13 @@ export default function Profile() {
               />
             </>
           )}
-        </View>
+        </FadeInSection>
 
         {/* Recognition */}
-        <TouchableOpacity
+        <FadeInSection index={5} step={45}>
+        <PressableScale
           style={styles.recognitionBtn}
           onPress={() => navigation.navigate(routes.MY_RECOGNITION)}
-          activeOpacity={0.8}
         >
           <View style={styles.recognitionLeft}>
             <View style={styles.recognitionIcon}>
@@ -201,14 +225,17 @@ export default function Profile() {
             <Text style={styles.recognitionText}>My Recognition</Text>
           </View>
           <Ionicons name="chevron-forward" size={16} color="#8BA4BC" />
-        </TouchableOpacity>
+        </PressableScale>
+        </FadeInSection>
 
         {/* Sign out */}
-        <TouchableOpacity style={styles.signOutBtn} onPress={signOut} activeOpacity={0.85}>
-          <Ionicons name="log-out-outline" size={18} color="#FFFFFF" />
-          <Text style={styles.signOutText}>Sign Out</Text>
-        </TouchableOpacity>
-      </ScrollView>
+        <FadeInSection index={6} step={45}>
+          <PressableScale style={styles.signOutBtn} scaleTo={0.96} onPress={signOut}>
+            <Ionicons name="log-out-outline" size={18} color="#FFFFFF" />
+            <Text style={styles.signOutText}>Sign Out</Text>
+          </PressableScale>
+        </FadeInSection>
+      </Animated.ScrollView>
 
       <EditProfileModal
         visible={editVisible}

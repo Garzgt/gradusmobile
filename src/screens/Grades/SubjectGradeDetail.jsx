@@ -1,9 +1,24 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, RefreshControl } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, {
+  FadeIn,
+  FadeOut,
+  LinearTransition,
+  useAnimatedScrollHandler,
+  useSharedValue,
+} from 'react-native-reanimated';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import SkeletonBox from '../../components/SkeletonLoader';
+import FadeInSection from '../../components/animated/FadeInSection';
+import StaggeredList from '../../components/animated/StaggeredList';
+import PressableScale from '../../components/animated/PressableScale';
+import CountUpNumber from '../../components/animated/CountUpNumber';
+import AnimatedBar from '../../components/animated/AnimatedBar';
+import AnimatedChevron from '../../components/animated/AnimatedChevron';
+import useParallaxMotion from '../../animations/useParallaxMotion';
+import { duration as motionDuration } from '../../animations/motionTokens';
 import GradeStatusBadge from './components/GradeStatusBadge';
 import { fetchGradeDetail, formatCreditUnits } from './services/gradeService';
 import styles from './SubjectGradeDetail.styles';
@@ -56,9 +71,7 @@ function ScoreRow({ label, score, max }) {
       <Text style={styles.scoreLabel}>{label}</Text>
       <View style={styles.scoreRight}>
         {hasMax && (
-          <View style={styles.miniBarBg}>
-            <View style={[styles.miniBarFill, { width: `${pct}%` }]} />
-          </View>
+          <AnimatedBar pct={pct} trackStyle={styles.miniBarBg} fillStyle={styles.miniBarFill} />
         )}
         <Text style={styles.scoreText}>
           {scoreN % 1 === 0 ? scoreN : scoreN.toFixed(2)}
@@ -78,19 +91,23 @@ function SubtotalChips({ raw, transmuted, weighted }) {
       {raw != null && (
         <View style={styles.subtotalChip}>
           <Text style={styles.subtotalChipLabel}>Raw</Text>
-          <Text style={styles.subtotalChipVal}>{Number(raw).toFixed(1)}%</Text>
+          <Text style={styles.subtotalChipVal}>
+            <CountUpNumber value={raw} decimals={1} style={styles.subtotalChipVal} />%
+          </Text>
         </View>
       )}
       {transmuted != null && (
         <View style={styles.subtotalChip}>
           <Text style={styles.subtotalChipLabel}>Transmuted</Text>
-          <Text style={styles.subtotalChipVal}>{Number(transmuted).toFixed(1)}%</Text>
+          <Text style={styles.subtotalChipVal}>
+            <CountUpNumber value={transmuted} decimals={1} style={styles.subtotalChipVal} />%
+          </Text>
         </View>
       )}
       {weighted != null && (
         <View style={styles.subtotalChip}>
           <Text style={styles.subtotalChipLabel}>Weighted</Text>
-          <Text style={[styles.subtotalChipVal, { color: '#2A7AB6' }]}>{Number(weighted).toFixed(2)}</Text>
+          <CountUpNumber value={weighted} decimals={2} style={[styles.subtotalChipVal, { color: '#2A7AB6' }]} />
         </View>
       )}
     </View>
@@ -132,7 +149,7 @@ function AttendanceSummary({ entries }) {
       {items.map((item, i) => (
         <React.Fragment key={item.label}>
           <View style={styles.attSummaryItem}>
-            <Text style={[styles.attSummaryNum, { color: item.color }]}>{item.val}</Text>
+            <CountUpNumber value={item.val} decimals={0} style={[styles.attSummaryNum, { color: item.color }]} />
             <Text style={styles.attSummaryLabel}>{item.label}</Text>
           </View>
           {i < items.length - 1 && <View style={styles.attSummarySep} />}
@@ -150,8 +167,14 @@ function AttendanceContent({ attendance }) {
   return (
     <>
       <AttendanceSummary entries={attendance} />
-      {showDates && attendance.map((entry, i) => <AttendanceDayRow key={i} entry={entry} />)}
-      <TouchableOpacity style={styles.attToggle} onPress={() => setShowDates(s => !s)} activeOpacity={0.7}>
+      {showDates && (
+        <Animated.View entering={FadeIn.duration(motionDuration.base)} exiting={FadeOut.duration(motionDuration.fast)}>
+          <StaggeredList step={30}>
+            {attendance.map((entry, i) => <AttendanceDayRow key={i} entry={entry} />)}
+          </StaggeredList>
+        </Animated.View>
+      )}
+      <PressableScale style={styles.attToggle} scaleTo={0.97} onPress={() => setShowDates(s => !s)}>
         <Ionicons
           name={showDates ? 'chevron-up-outline' : 'calendar-outline'}
           size={13}
@@ -160,7 +183,7 @@ function AttendanceContent({ attendance }) {
         <Text style={styles.attToggleText}>
           {showDates ? 'Hide dates' : `View all ${attendance.length} meeting dates`}
         </Text>
-      </TouchableOpacity>
+      </PressableScale>
     </>
   );
 }
@@ -170,8 +193,8 @@ function AttendanceContent({ attendance }) {
 function ComponentBlock({ icon, title, weightPct, weighted, raw, transmuted, children }) {
   const [open, setOpen] = useState(false);
   return (
-    <View style={styles.compBlock}>
-      <TouchableOpacity style={styles.compBlockHeader} onPress={() => setOpen(o => !o)} activeOpacity={0.7}>
+    <Animated.View style={styles.compBlock} layout={LinearTransition.duration(motionDuration.base)}>
+      <PressableScale style={styles.compBlockHeader} scaleTo={0.985} onPress={() => setOpen(o => !o)}>
         <View style={styles.compBlockLeft}>
           <View style={styles.compBlockIconWrap}>
             <Ionicons name={icon} size={13} color="#2A7AB6" />
@@ -186,20 +209,23 @@ function ComponentBlock({ icon, title, weightPct, weighted, raw, transmuted, chi
         <View style={styles.compBlockRight}>
           {weighted != null && (
             <View style={styles.compBlockScore}>
-              <Text style={styles.compBlockScoreVal}>{Number(weighted).toFixed(2)}</Text>
+              <CountUpNumber value={weighted} decimals={2} style={styles.compBlockScoreVal} />
               <Text style={styles.compBlockScoreMax}> pts</Text>
             </View>
           )}
-          <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={15} color="#8BA4BC" />
+          <AnimatedChevron open={open} size={15} color="#8BA4BC" />
         </View>
-      </TouchableOpacity>
+      </PressableScale>
       {open && (
-        <>
+        <Animated.View
+          entering={FadeIn.duration(motionDuration.base)}
+          exiting={FadeOut.duration(motionDuration.fast)}
+        >
           {children && <View style={styles.compBlockBody}>{children}</View>}
           <SubtotalChips raw={raw} transmuted={transmuted} weighted={weighted} />
-        </>
+        </Animated.View>
       )}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -221,35 +247,43 @@ function GradeWeightsCard({ settings: s }) {
   const total = rows.reduce((sum, r) => sum + Number(r.value), 0);
 
   return (
-    <View style={styles.weightsCard}>
-      <TouchableOpacity style={styles.weightsHeader} onPress={() => setOpen(o => !o)} activeOpacity={0.7}>
+    <Animated.View style={styles.weightsCard} layout={LinearTransition.duration(motionDuration.base)}>
+      <PressableScale style={styles.weightsHeader} scaleTo={0.985} onPress={() => setOpen(o => !o)}>
         <View style={styles.weightsIconWrap}>
           <Ionicons name="options-outline" size={14} color="#2A7AB6" />
         </View>
         <Text style={styles.weightsTitle}>Grade Weights</Text>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={15} color="#8BA4BC" style={{ marginLeft: 'auto' }} />
-      </TouchableOpacity>
+        <AnimatedChevron open={open} size={15} color="#8BA4BC" style={{ marginLeft: 'auto' }} />
+      </PressableScale>
       {open && (
-        <>
+        <Animated.View
+          entering={FadeIn.duration(motionDuration.base)}
+          exiting={FadeOut.duration(motionDuration.fast)}
+        >
           <View style={styles.weightsDivider} />
-          {rows.map((r, i) => (
-            <View key={r.label} style={[styles.weightsRow, i > 0 && styles.weightsRowBorder]}>
-              <Text style={styles.weightsLabel}>{r.label}</Text>
-              <View style={styles.weightsBarBg}>
-                <View style={[styles.weightsBarFill, { width: `${Math.min((r.value / total) * 100, 100)}%` }]} />
+          <StaggeredList step={40}>
+            {rows.map((r, i) => (
+              <View key={r.label} style={[styles.weightsRow, i > 0 && styles.weightsRowBorder]}>
+                <Text style={styles.weightsLabel}>{r.label}</Text>
+                <AnimatedBar
+                  pct={Math.min((r.value / total) * 100, 100)}
+                  delay={i * 40}
+                  trackStyle={styles.weightsBarBg}
+                  fillStyle={styles.weightsBarFill}
+                />
+                <Text style={styles.weightsValue}>{r.value}%</Text>
               </View>
-              <Text style={styles.weightsValue}>{r.value}%</Text>
-            </View>
-          ))}
+            ))}
+          </StaggeredList>
           {s.transmutation_base != null && (
             <View style={styles.transmuteRow}>
               <Text style={styles.transmuteLabel}>Transmutation Base</Text>
               <Text style={styles.transmuteValue}>{s.transmutation_base}%</Text>
             </View>
           )}
-        </>
+        </Animated.View>
       )}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -294,7 +328,7 @@ function PeriodSection({ component, label, settings: s, periodSettings: ps, atte
         <Text style={styles.periodHeaderLabel}>{label.toUpperCase()}</Text>
         {grade != null && (
           <View style={styles.periodHeaderRight}>
-            <Text style={styles.periodHeaderGrade}>{Number(grade).toFixed(2)}</Text>
+            <CountUpNumber value={grade} decimals={2} style={styles.periodHeaderGrade} />
             <Text style={styles.periodHeaderSub}>term grade</Text>
             {incentive > 0 && (
               <Text style={styles.periodHeaderIncentive}>incl. +{incentive.toFixed(2)} incentive</Text>
@@ -408,6 +442,12 @@ export default function SubjectGradeDetail() {
   const [error,      setError]      = useState('');
   const [activeTab,  setActiveTab]  = useState('midterm');
 
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((event) => {
+    scrollY.value = event.contentOffset.y;
+  });
+  const orbStyle = useParallaxMotion(scrollY, { factor: 0.25, clamp: 200 });
+
   const loadData = useCallback(async (isRefresh = false) => {
     if (!classOfferingId || !studentId) { setLoading(false); return; }
     if (!isRefresh) setLoading(true);
@@ -428,7 +468,6 @@ export default function SubjectGradeDetail() {
 
   const subject      = data?.subject;
   const teacher      = data?.teacher;
-  const equivDisplay = data?.equivalent != null ? data.equivalent.toFixed(2) : '—';
   const equivStyle   = [
     styles.equivalentGrade,
     data?.remarks === 'PASSED' && { color: '#4ADE80' },
@@ -438,19 +477,21 @@ export default function SubjectGradeDetail() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <View style={styles.decOrb} />
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+        <Animated.View style={[styles.decOrb, orbStyle]} />
+        <PressableScale style={styles.backBtn} scaleTo={0.86} hitSlop={8} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
+        </PressableScale>
         <Text style={styles.headerLabel}>SUBJECT GRADE</Text>
         <Text style={styles.headerTitle} numberOfLines={2}>
           {subject?.title ?? subjectTitle ?? 'Grade Detail'}
         </Text>
       </View>
 
-      <ScrollView
+      <Animated.ScrollView
         style={styles.scroll}
         contentContainerStyle={{ paddingBottom: insets.bottom + 88 }}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2A7AB6" colors={['#2A7AB6']} />
         }
@@ -462,24 +503,26 @@ export default function SubjectGradeDetail() {
             <SkeletonBox width="100%" height={320} borderRadius={16} />
           </View>
         ) : error ? (
-          <View style={styles.emptyBox}>
+          <FadeInSection style={styles.emptyBox}>
             <Text style={styles.emptyText}>{error}</Text>
-          </View>
+          </FadeInSection>
         ) : (
           <>
             {/* Final grade card — only shown once teacher posts grades */}
-            {data.hasPostedGrade && <View style={styles.gradeCard}>
+            {data.hasPostedGrade && <FadeInSection index={0} style={styles.gradeCard}>
               <View style={styles.decOrbCard} />
               <View style={styles.gradeCardTop}>
                 <Text style={styles.gradeCardTitle}>Final Grade</Text>
               </View>
-              <Text style={equivStyle}>{equivDisplay}</Text>
+              <CountUpNumber value={data?.equivalent} decimals={2} style={equivStyle} />
               <View style={styles.gradeRow}>
                 <View style={styles.gradeChip}>
                   <Text style={styles.gradeChipLabel}>Midterm</Text>
-                  <Text style={styles.gradeChipValue}>
-                    {data?.midGrade != null ? (data.midGrade + (data.midtermIncentive || 0)).toFixed(2) : '—'}
-                  </Text>
+                  <CountUpNumber
+                    value={data?.midGrade != null ? data.midGrade + (data.midtermIncentive || 0) : null}
+                    decimals={2}
+                    style={styles.gradeChipValue}
+                  />
                   {data?.midtermIncentive > 0 && (
                     <Text style={styles.incentiveNote}>incl. +{data.midtermIncentive.toFixed(2)} incentive</Text>
                   )}
@@ -487,9 +530,11 @@ export default function SubjectGradeDetail() {
                 <View style={styles.gradeSep} />
                 <View style={styles.gradeChip}>
                   <Text style={styles.gradeChipLabel}>Final Term</Text>
-                  <Text style={styles.gradeChipValue}>
-                    {data?.finGrade != null ? (data.finGrade + (data.finalTermIncentive || 0)).toFixed(2) : '—'}
-                  </Text>
+                  <CountUpNumber
+                    value={data?.finGrade != null ? data.finGrade + (data.finalTermIncentive || 0) : null}
+                    decimals={2}
+                    style={styles.gradeChipValue}
+                  />
                   {data?.finalTermIncentive > 0 && (
                     <Text style={styles.incentiveNote}>incl. +{data.finalTermIncentive.toFixed(2)} incentive</Text>
                   )}
@@ -501,9 +546,7 @@ export default function SubjectGradeDetail() {
                 </View>
                 <View style={styles.rawFinalGradeRow}>
                   <Text style={styles.rawFinalGradeLabel}>Final Grade</Text>
-                  <Text style={styles.rawFinalGradeValue}>
-                    {data?.finalPoints != null ? data.finalPoints.toFixed(2) : '—'}
-                  </Text>
+                  <CountUpNumber value={data?.finalPoints} decimals={2} style={styles.rawFinalGradeValue} />
                 </View>
                 {data?.gradeIncentive > 0 && (
                   <View style={styles.gradeIncentiveRow}>
@@ -517,11 +560,11 @@ export default function SubjectGradeDetail() {
                   <GradeStatusBadge remarks={data?.remarks} />
                 </View>
               </View>
-            </View>}
+            </FadeInSection>}
 
             {/* Grade breakdown */}
             {(data?.midtermComponent || data?.finalComponent) ? (
-              <View style={styles.breakdownWrap}>
+              <FadeInSection index={1} style={styles.breakdownWrap}>
                 <View style={styles.sectionLabel}>
                   <Text style={styles.sectionLabelText}>Grade Breakdown</Text>
                 </View>
@@ -532,19 +575,23 @@ export default function SubjectGradeDetail() {
                     { key: 'midterm', label: 'Midterm' },
                     { key: 'final',   label: 'Final Term' },
                   ].map(tab => (
-                    <TouchableOpacity
+                    <PressableScale
                       key={tab.key}
                       style={[styles.periodTab, activeTab === tab.key && styles.periodTabActive]}
+                      scaleTo={0.95}
                       onPress={() => setActiveTab(tab.key)}
-                      activeOpacity={0.8}
                     >
                       <Text style={[styles.periodTabText, activeTab === tab.key && styles.periodTabTextActive]}>
                         {tab.label}
                       </Text>
-                    </TouchableOpacity>
+                    </PressableScale>
                   ))}
                 </View>
 
+                <Animated.View
+                  key={activeTab}
+                  entering={FadeIn.duration(motionDuration.base)}
+                >
                 {activeTab === 'midterm' ? (
                   data.midtermComponent ? (
                     <PeriodSection
@@ -577,29 +624,31 @@ export default function SubjectGradeDetail() {
                   )
                 )}
 
+                </Animated.View>
+
                 <GradeWeightsCard settings={data.sheetSettings} />
-              </View>
+              </FadeInSection>
             ) : (
-              <View style={styles.noGradeBox}>
+              <FadeInSection index={1} style={styles.noGradeBox}>
                 <Ionicons name="document-outline" size={36} color="#C8DFF0" />
                 <Text style={styles.noGradeText}>No grades recorded yet</Text>
                 <Text style={styles.noGradeSubText}>
                   Your teacher hasn't entered grades for this subject.
                 </Text>
-              </View>
+              </FadeInSection>
             )}
 
             {/* Subject info card */}
-            <View style={styles.infoCard}>
+            <FadeInSection index={2} style={styles.infoCard}>
               <InfoRow icon="pricetag-outline" label="Subject Code" value={subject?.subject_code} />
               <InfoRow icon="school-outline" label="Credit Units" value={formatCreditUnits(subject)} />
               <InfoRow icon="person-outline" label="Teacher" value={teacher ? `${teacher.first_name} ${teacher.last_name}` : null} />
               <InfoRow icon="people-outline" label="Section" value={data?.section?.section_code} />
               <InfoRow icon="calendar-outline" label="Term" value={formatTermLabel(data?.term)} last />
-            </View>
+            </FadeInSection>
           </>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
     </SafeAreaView>
   );
 }

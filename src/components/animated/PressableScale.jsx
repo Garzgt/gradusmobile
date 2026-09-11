@@ -8,8 +8,12 @@ import Animated, {
 } from 'react-native-reanimated';
 import { spring } from '../../animations/motionTokens';
 
-// Press feedback for cards and buttons. Reads better than activeOpacity at card
-// size, where dimming a large rectangle looks like a glitch rather than a press.
+// Single animated node rather than a styled child inside a plain Pressable: the
+// style has to land on the same element the parent lays out, or flex:1 and
+// full-width styles apply to an inner view while the touchable shrinks to its
+// content.
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 export default function PressableScale({
   scaleTo = 0.97,
   style,
@@ -25,7 +29,7 @@ export default function PressableScale({
   }));
 
   return (
-    <Pressable
+    <AnimatedPressable
       onPress={onPress}
       onPressIn={() => {
         if (!reduced) pressed.value = withSpring(1, spring.pop);
@@ -33,9 +37,10 @@ export default function PressableScale({
       onPressOut={() => {
         pressed.value = withSpring(0, spring.pop);
       }}
+      style={[style, animatedStyle]}
       {...rest}
     >
-      <Animated.View style={[style, animatedStyle]}>{children}</Animated.View>
-    </Pressable>
+      {children}
+    </AnimatedPressable>
   );
 }

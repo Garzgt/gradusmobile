@@ -1,13 +1,17 @@
 import React, { useCallback, useState } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, RefreshControl,
+  View, Text, StyleSheet, RefreshControl,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../config/supabase';
 import SkeletonBox from '../../components/SkeletonLoader';
+import FadeInSection from '../../components/animated/FadeInSection';
+import CountUpNumber from '../../components/animated/CountUpNumber';
+import useParallaxMotion from '../../animations/useParallaxMotion';
 import ScheduleGrid from '../AdvisingPlan/components/ScheduleGrid';
 import CourseTableView from '../AdvisingPlan/components/CourseTableView';
 
@@ -100,6 +104,12 @@ export default function WeeklySchedule() {
   const [term,       setTerm]       = useState(null);
   const [error,      setError]      = useState('');
 
+  const scrollY = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((event) => {
+    scrollY.value = event.contentOffset.y;
+  });
+  const orbStyle = useParallaxMotion(scrollY, { factor: 0.25, clamp: 200 });
+
   const loadData = useCallback(async (isRefresh = false) => {
     if (!user) { setLoading(false); return; }
     if (!isRefresh) setLoading(true);
@@ -140,16 +150,18 @@ export default function WeeklySchedule() {
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <View style={styles.header}>
-        <View style={styles.decOrb} />
+        <Animated.View style={[styles.decOrb, orbStyle]} />
         <Text style={styles.headerLabel}>SCHEDULE</Text>
         <Text style={styles.headerTitle}>My Schedule</Text>
         <Text style={styles.headerSub}>{term ? formatTermLabel(term) : 'Active Term'}</Text>
       </View>
 
-      <ScrollView
+      <Animated.ScrollView
         style={styles.scroll}
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={refreshing} onRefresh={onRefresh}
@@ -160,52 +172,60 @@ export default function WeeklySchedule() {
         {loading ? (
           <ScheduleSkeleton />
         ) : error ? (
-          <View style={styles.emptyCard}>
+          <FadeInSection style={styles.emptyCard}>
             <Ionicons name="alert-circle-outline" size={32} color="#C8DFF0" />
             <Text style={styles.emptyTitle}>{error}</Text>
-          </View>
+          </FadeInSection>
         ) : entries.length === 0 ? (
-          <View style={styles.emptyCard}>
+          <FadeInSection style={styles.emptyCard}>
             <Ionicons name="calendar-outline" size={36} color="#C8DFF0" />
             <Text style={styles.emptyTitle}>No schedule yet</Text>
             <Text style={styles.emptyText}>
               Your class schedule will appear here once your teacher sets it up.
             </Text>
-          </View>
+          </FadeInSection>
         ) : (
           <>
             {/* Summary strip */}
-            <View style={styles.summaryCard}>
+            <FadeInSection index={0} style={styles.summaryCard}>
               <View style={styles.summaryItem}>
-                <Text style={styles.summaryNum}>{uniqueSubjects.length}</Text>
+                <CountUpNumber value={uniqueSubjects.length} decimals={0} style={styles.summaryNum} />
                 <Text style={styles.summaryLbl}>Subjects</Text>
               </View>
               <View style={styles.summaryDivider} />
               <View style={styles.summaryItem}>
-                <Text style={styles.summaryNum}>{totalUnits}</Text>
+                <CountUpNumber
+                  value={totalUnits}
+                  decimals={Number.isInteger(totalUnits) ? 0 : 1}
+                  style={styles.summaryNum}
+                />
                 <Text style={styles.summaryLbl}>Total Units</Text>
               </View>
               <View style={styles.summaryDivider} />
               <View style={styles.summaryItem}>
-                <Text style={styles.summaryNum}>{entries.length}</Text>
+                <CountUpNumber value={entries.length} decimals={0} style={styles.summaryNum} />
                 <Text style={styles.summaryLbl}>Meetings</Text>
               </View>
-            </View>
+            </FadeInSection>
 
             {/* Weekly grid */}
-            <View style={styles.sectionLabelCard}>
-              <Text style={styles.sectionLabelText}>Weekly Schedule</Text>
-            </View>
-            <ScheduleGrid entries={entries} subjectColors={subjectColors} />
+            <FadeInSection index={1}>
+              <View style={styles.sectionLabelCard}>
+                <Text style={styles.sectionLabelText}>Weekly Schedule</Text>
+              </View>
+              <ScheduleGrid entries={entries} subjectColors={subjectColors} />
+            </FadeInSection>
 
             {/* Course table */}
-            <View style={[styles.sectionLabelCard, { marginTop: 12 }]}>
-              <Text style={styles.sectionLabelText}>Enrolled Subjects</Text>
-            </View>
-            <CourseTableView assigned={entries} subjectColors={subjectColors} />
+            <FadeInSection index={2}>
+              <View style={[styles.sectionLabelCard, { marginTop: 12 }]}>
+                <Text style={styles.sectionLabelText}>Enrolled Subjects</Text>
+              </View>
+              <CourseTableView assigned={entries} subjectColors={subjectColors} />
+            </FadeInSection>
           </>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
     </SafeAreaView>
   );
 }

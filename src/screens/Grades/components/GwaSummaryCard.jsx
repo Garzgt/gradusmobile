@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text } from 'react-native';
+import CountUpNumber from '../../../components/animated/CountUpNumber';
 import styles from './GwaSummaryCard.styles';
 
 function getGwaColor(gwa) {
@@ -12,7 +13,6 @@ function getGwaColor(gwa) {
 }
 
 export default function GwaSummaryCard({ gwa, termLabel, subjectCount, passedCount }) {
-  const display = gwa != null ? parseFloat(gwa).toFixed(4) : '—';
   const color = getGwaColor(gwa);
 
   return (
@@ -20,17 +20,17 @@ export default function GwaSummaryCard({ gwa, termLabel, subjectCount, passedCou
       <View style={styles.decOrb} />
       <View style={styles.left}>
         <Text style={styles.smallLabel}>GWA</Text>
-        <Text style={[styles.gwaNumber, { color }]}>{display}</Text>
+        <CountUpNumber value={gwa} decimals={4} style={[styles.gwaNumber, { color }]} />
         <Text style={styles.description}>General Weighted Average</Text>
         {termLabel ? <Text style={styles.termLabel}>{termLabel}</Text> : null}
       </View>
       <View style={styles.right}>
         <View style={styles.statChip}>
-          <Text style={styles.statValue}>{passedCount}</Text>
+          <CountUpNumber value={passedCount} decimals={0} style={styles.statValue} />
           <Text style={styles.statLabel}>Passed</Text>
         </View>
         <View style={styles.statChip}>
-          <Text style={styles.statValue}>{subjectCount}</Text>
+          <CountUpNumber value={subjectCount} decimals={0} style={styles.statValue} />
           <Text style={styles.statLabel}>Subjects</Text>
         </View>
       </View>

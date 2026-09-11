@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import PressableScale from '../../../components/animated/PressableScale';
 import GradeStatusBadge from './GradeStatusBadge';
 import { formatCreditUnits } from '../services/gradeService';
 import styles from './SubjectCard.styles';
@@ -18,7 +19,7 @@ export default function SubjectCard({ grade, onPress }) {
   const iconIdx = (subject?.subject_code?.charCodeAt(0) ?? 0) % BANNER_ICONS.length;
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.85}>
+    <PressableScale style={styles.card} onPress={onPress}>
       <View style={[styles.banner, { backgroundColor: accentColor }]}>
         <View style={styles.bannerOverlay} />
         <Ionicons
@@ -53,6 +54,6 @@ export default function SubjectCard({ grade, onPress }) {
           </Text>
         </View>
       </View>
-    </TouchableOpacity>
+    </PressableScale>
   );
 }
