@@ -2,7 +2,7 @@ module.exports = {
   expo: {
     name: "Gradus",
     slug: "gradus",
-    version: "1.0.0",
+    version: "1.0.1",
     scheme: "gradus",
     orientation: "portrait",
     icon: "./assets/icon.png",
