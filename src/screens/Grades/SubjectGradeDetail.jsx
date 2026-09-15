@@ -35,6 +35,44 @@ function formatDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// The per-item quiz/activity/exam dates on grade_period_settings are stored as
+// free-form text, not a real date column. In practice teachers enter bare
+// "M-D" or "M/D" (e.g. "9-15" for Sept 15) with no year, since the year is
+// implied by the class term. `new Date("9-15")` fills in a placeholder year to
+// make it a real date, and that placeholder is NOT consistent across JS
+// engines — Node/V8 defaults to 2001, Hermes (React Native's engine) landed on
+// year 10 for an equivalent value, which is the "May 2, 0010" bug. So a bare
+// month-day string is parsed by hand and shown with no year at all, and Date
+// is only used for strings that already carry an explicit 4-digit year, where
+// parsing is unambiguous. Anything else is shown exactly as the teacher typed
+// it rather than risking a wrong reformat.
+function formatFlexibleDate(value) {
+  if (value == null) return null;
+  const trimmed = String(value).trim();
+  if (!trimmed) return null;
+
+  const bareMonthDay = trimmed.match(/^(\d{1,2})[-/](\d{1,2})$/);
+  if (bareMonthDay) {
+    const month = Number(bareMonthDay[1]);
+    const day = Number(bareMonthDay[2]);
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return `${MONTH_ABBR[month - 1]} ${day}`;
+    }
+    return trimmed;
+  }
+
+  if (/\d{4}/.test(trimmed)) {
+    const parsed = new Date(trimmed);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+  }
+
+  return trimmed;
+}
+
 const ATT_CFG = {
   10: { label: 'Present', color: '#16A34A', bg: '#DCFCE7', icon: 'checkmark-circle' },
   5:  { label: 'Late',    color: '#D97706', bg: '#FEF3C7', icon: 'time-outline'     },
@@ -60,15 +98,19 @@ function InfoRow({ icon, label, value, last }) {
 
 // ─── Score row with mini progress bar ────────────────────────────────────────
 
-function ScoreRow({ label, score, max }) {
+function ScoreRow({ label, score, max, date }) {
   if (score == null) return null;
   const maxN   = max != null ? Number(max) : null;
   const scoreN = Number(score);
   const hasMax = maxN != null && maxN > 0;
   const pct    = hasMax ? Math.min((scoreN / maxN) * 100, 100) : null;
+  const dateLabel = formatFlexibleDate(date);
   return (
     <View style={styles.scoreRow}>
-      <Text style={styles.scoreLabel}>{label}</Text>
+      <View style={styles.scoreLabelCol}>
+        <Text style={styles.scoreLabel}>{label}</Text>
+        {dateLabel ? <Text style={styles.scoreDate}>{dateLabel}</Text> : null}
+      </View>
       <View style={styles.scoreRight}>
         {hasMax && (
           <AnimatedBar pct={pct} trackStyle={styles.miniBarBg} fillStyle={styles.miniBarFill} />
@@ -289,8 +331,7 @@ function GradeWeightsCard({ settings: s }) {
 
 // ─── Period section ───────────────────────────────────────────────────────────
 
-function PeriodSection({ component, label, settings: s, periodSettings: ps, attendance }) {
-  if (!component) return null;
+function PeriodSection({ component = {}, label, settings: s, periodSettings: ps, attendance = [] }) {
 
   // term_grade_numeric is the raw weighted score before incentive — the teacher's incentive
   // points (set via SOG) are applied on top when computing the final blended grade, so the
@@ -314,13 +355,21 @@ function PeriodSection({ component, label, settings: s, periodSettings: ps, atte
   const labMax  = Number(ps?.lab_max        ?? s?.lab_max        ?? 30);
   const examMax = Number(ps?.exam_max       ?? s?.exam_max       ?? 100);
 
-  const hasQuiz = [q1max, q2max, q3max, q4max, q5max].some(m => m > 0)
-    || [component.q1_score, component.q2_score, component.q3_score, component.q4_score, component.q5_score].some(v => v != null)
-    || (Number(component.quizzes_weighted) > 0);
+  // grade_period_settings.exam_date is the period-scoped text field (matches
+  // whichever tab is active); grade_sheet_settings splits the same date by
+  // period as a proper `date` column. Prefer the period-scoped one, since it's
+  // what a teacher would edit alongside this period's other item dates.
+  const examDate = ps?.exam_date ?? (label === 'Midterm' ? s?.exam_date_midterm : s?.exam_date_final);
 
-  const hasAct = [a1max, a2max, a3max, a4max, a5max].some(m => m > 0)
-    || [component.a1_score, component.a2_score, component.a3_score, component.a4_score, component.a5_score].some(v => v != null)
-    || (Number(component.activities_weighted) > 0);
+  // Whether every score in a category is still unset — drives the "No ... yet"
+  // placeholder so an opened, empty card says so instead of showing nothing.
+  const noQuizData = [component.q1_score, component.q2_score, component.q3_score, component.q4_score, component.q5_score]
+    .every(v => v == null);
+  const noActData = [component.a1_score, component.a2_score, component.a3_score, component.a4_score, component.a5_score]
+    .every(v => v == null);
+  const noRecData = component.recitation_raw == null;
+  const noLabData = component.laboratory_raw == null;
+  const noExamData = component.major_exam_raw == null;
 
   return (
     <View style={styles.periodSection}>
@@ -339,90 +388,101 @@ function PeriodSection({ component, label, settings: s, periodSettings: ps, atte
 
       <View style={styles.compBlocksWrap}>
 
+        {/* All six standard categories always show, per term — regardless of
+            whether this subject has configured weights yet or this student has
+            any saved score. ComponentBlock already hides the weight-% badge when
+            weightPct is 0/undefined, and AttendanceContent/ScoreRow already show
+            nothing for a field with no data, so an unconfigured category simply
+            reads as empty rather than being hidden entirely. */}
+
         {/* 1. Attendance */}
-        {s?.weight_attendance > 0 && (
-          <ComponentBlock icon="calendar-outline" title="Attendance"
-            weightPct={s?.weight_attendance}
-            weighted={component.attendance_weighted}
-          >
-            <AttendanceContent attendance={attendance} />
-          </ComponentBlock>
-        )}
+        <ComponentBlock icon="calendar-outline" title="Attendance"
+          weightPct={s?.weight_attendance}
+          weighted={component.attendance_weighted}
+        >
+          <AttendanceContent attendance={attendance} />
+        </ComponentBlock>
 
         {/* 2. Quizzes */}
-        {hasQuiz && (
-          <ComponentBlock icon="help-circle-outline" title="Quizzes"
-            weightPct={s?.weight_quizzes}
-            weighted={component.quizzes_weighted}
-            raw={component.quizzes_raw} transmuted={component.quizzes_transmuted}
-          >
-            <ScoreRow label="Quiz 1" score={component.q1_score} max={q1max} />
-            <ScoreRow label="Quiz 2" score={component.q2_score} max={q2max} />
-            <ScoreRow label="Quiz 3" score={component.q3_score} max={q3max} />
-            <ScoreRow label="Quiz 4" score={component.q4_score} max={q4max} />
-            <ScoreRow label="Quiz 5" score={component.q5_score} max={q5max} />
-          </ComponentBlock>
-        )}
+        <ComponentBlock icon="help-circle-outline" title="Quizzes"
+          weightPct={s?.weight_quizzes}
+          weighted={component.quizzes_weighted}
+          raw={component.quizzes_raw} transmuted={component.quizzes_transmuted}
+        >
+          {noQuizData ? (
+            <Text style={styles.noDataText}>No quizzes recorded yet</Text>
+          ) : (
+            <>
+              <ScoreRow label="Quiz 1" score={component.q1_score} max={q1max} date={ps?.q1_date} />
+              <ScoreRow label="Quiz 2" score={component.q2_score} max={q2max} date={ps?.q2_date} />
+              <ScoreRow label="Quiz 3" score={component.q3_score} max={q3max} date={ps?.q3_date} />
+              <ScoreRow label="Quiz 4" score={component.q4_score} max={q4max} date={ps?.q4_date} />
+              <ScoreRow label="Quiz 5" score={component.q5_score} max={q5max} date={ps?.q5_date} />
+            </>
+          )}
+        </ComponentBlock>
 
         {/* 3. Activities */}
-        {hasAct && (
-          <ComponentBlock icon="create-outline" title="Activities"
-            weightPct={s?.weight_activities}
-            weighted={component.activities_weighted}
-            raw={component.activities_raw} transmuted={component.activities_transmuted}
-          >
-            <ScoreRow label="Activity 1" score={component.a1_score} max={a1max} />
-            <ScoreRow label="Activity 2" score={component.a2_score} max={a2max} />
-            <ScoreRow label="Activity 3" score={component.a3_score} max={a3max} />
-            <ScoreRow label="Activity 4" score={component.a4_score} max={a4max} />
-            <ScoreRow label="Activity 5" score={component.a5_score} max={a5max} />
-          </ComponentBlock>
-        )}
+        <ComponentBlock icon="create-outline" title="Activities"
+          weightPct={s?.weight_activities}
+          weighted={component.activities_weighted}
+          raw={component.activities_raw} transmuted={component.activities_transmuted}
+        >
+          {noActData ? (
+            <Text style={styles.noDataText}>No activities recorded yet</Text>
+          ) : (
+            <>
+              <ScoreRow label="Activity 1" score={component.a1_score} max={a1max} date={ps?.a1_date} />
+              <ScoreRow label="Activity 2" score={component.a2_score} max={a2max} date={ps?.a2_date} />
+              <ScoreRow label="Activity 3" score={component.a3_score} max={a3max} date={ps?.a3_date} />
+              <ScoreRow label="Activity 4" score={component.a4_score} max={a4max} date={ps?.a4_date} />
+              <ScoreRow label="Activity 5" score={component.a5_score} max={a5max} date={ps?.a5_date} />
+            </>
+          )}
+        </ComponentBlock>
 
         {/* 4. Recitation */}
-        {s?.weight_recitation > 0 && (
-          <ComponentBlock icon="mic-outline" title="Recitation"
-            weightPct={s?.weight_recitation}
-            weighted={component.recitation_weighted}
-            transmuted={component.recitation_transmuted}
-          >
+        <ComponentBlock icon="mic-outline" title="Recitation"
+          weightPct={s?.weight_recitation}
+          weighted={component.recitation_weighted}
+          transmuted={component.recitation_transmuted}
+        >
+          {noRecData ? (
+            <Text style={styles.noDataText}>No recitation recorded yet</Text>
+          ) : (
             <ScoreRow label="Score" score={component.recitation_raw} max={recMax} />
-          </ComponentBlock>
-        )}
+          )}
+        </ComponentBlock>
 
-        {/* 5. Laboratory */}
-        {s?.weight_laboratory > 0 && (
+        {/* 5. Laboratory — the one category still gated, on class_type rather than
+            weight, since a non-lab subject shouldn't show it even once weights and
+            scores exist for the other five. */}
+        {s?.class_type === 'lab' && (
           <ComponentBlock icon="flask-outline" title="Laboratory"
             weightPct={s?.weight_laboratory}
             weighted={component.laboratory_weighted}
             raw={component.laboratory_raw} transmuted={component.laboratory_transmuted}
           >
-            <ScoreRow label="Score" score={component.laboratory_raw} max={labMax} />
+            {noLabData ? (
+              <Text style={styles.noDataText}>No laboratory scores recorded yet</Text>
+            ) : (
+              <ScoreRow label="Score" score={component.laboratory_raw} max={labMax} date={ps?.lab_date} />
+            )}
           </ComponentBlock>
         )}
 
         {/* 6. Major Exam */}
-        {s?.weight_major_exam > 0 && (
-          <ComponentBlock icon="document-text-outline" title="Major Exam"
-            weightPct={s?.weight_major_exam}
-            weighted={component.major_exam_weighted}
-            raw={component.major_exam_raw} transmuted={component.major_exam_transmuted}
-          >
-            <ScoreRow label="Score" score={component.major_exam_raw} max={examMax} />
-          </ComponentBlock>
-        )}
-
-        {/* Fallback when no settings */}
-        {!s && [
-          { icon: 'calendar-outline',      title: 'Attendance', w: component.attendance_weighted  },
-          { icon: 'help-circle-outline',   title: 'Quizzes',    w: component.quizzes_weighted    },
-          { icon: 'create-outline',        title: 'Activities', w: component.activities_weighted  },
-          { icon: 'mic-outline',           title: 'Recitation', w: component.recitation_weighted  },
-          { icon: 'flask-outline',         title: 'Laboratory', w: component.laboratory_weighted  },
-          { icon: 'document-text-outline', title: 'Major Exam', w: component.major_exam_weighted  },
-        ].filter(b => b.w != null).map(b => (
-          <ComponentBlock key={b.title} icon={b.icon} title={b.title} weighted={b.w} />
-        ))}
+        <ComponentBlock icon="document-text-outline" title="Major Exam"
+          weightPct={s?.weight_major_exam}
+          weighted={component.major_exam_weighted}
+          raw={component.major_exam_raw} transmuted={component.major_exam_transmuted}
+        >
+          {noExamData ? (
+            <Text style={styles.noDataText}>No major exam recorded yet</Text>
+          ) : (
+            <ScoreRow label="Score" score={component.major_exam_raw} max={examMax} date={examDate} />
+          )}
+        </ComponentBlock>
       </View>
     </View>
   );
@@ -562,81 +622,61 @@ export default function SubjectGradeDetail() {
               </View>
             </FadeInSection>}
 
-            {/* Grade breakdown */}
-            {(data?.midtermComponent || data?.finalComponent) ? (
-              <FadeInSection index={1} style={styles.breakdownWrap}>
-                <View style={styles.sectionLabel}>
-                  <Text style={styles.sectionLabelText}>Grade Breakdown</Text>
-                </View>
+            {/* Grade breakdown — always shown. PeriodSection falls back to the six
+                standard categories (Attendance, Quizzes, Activities, Recitation,
+                Laboratory, Major Exam) even when this subject has no sheet settings
+                and this student has no saved component row yet, so the student always
+                sees the shape of the grade rather than a blank "not recorded" box. */}
+            <FadeInSection index={1} style={styles.breakdownWrap}>
+              <View style={styles.sectionLabel}>
+                <Text style={styles.sectionLabelText}>Grade Breakdown</Text>
+              </View>
 
-                {/* Midterm / Final Term tab switcher */}
-                <View style={styles.periodTabBar}>
-                  {[
-                    { key: 'midterm', label: 'Midterm' },
-                    { key: 'final',   label: 'Final Term' },
-                  ].map(tab => (
-                    <PressableScale
-                      key={tab.key}
-                      style={[styles.periodTab, activeTab === tab.key && styles.periodTabActive]}
-                      scaleTo={0.95}
-                      onPress={() => setActiveTab(tab.key)}
-                    >
-                      <Text style={[styles.periodTabText, activeTab === tab.key && styles.periodTabTextActive]}>
-                        {tab.label}
-                      </Text>
-                    </PressableScale>
-                  ))}
-                </View>
+              {/* Midterm / Final Term tab switcher */}
+              <View style={styles.periodTabBar}>
+                {[
+                  { key: 'midterm', label: 'Midterm' },
+                  { key: 'final',   label: 'Final Term' },
+                ].map(tab => (
+                  <PressableScale
+                    key={tab.key}
+                    style={[styles.periodTab, activeTab === tab.key && styles.periodTabActive]}
+                    scaleTo={0.95}
+                    onPress={() => setActiveTab(tab.key)}
+                  >
+                    <Text style={[styles.periodTabText, activeTab === tab.key && styles.periodTabTextActive]}>
+                      {tab.label}
+                    </Text>
+                  </PressableScale>
+                ))}
+              </View>
 
-                <Animated.View
-                  key={activeTab}
-                  entering={FadeIn.duration(motionDuration.base)}
-                >
-                {activeTab === 'midterm' ? (
-                  data.midtermComponent ? (
-                    <PeriodSection
-                      component={data.midtermComponent}
-                      label="Midterm"
-                      settings={data.sheetSettings}
-                      periodSettings={data.midPeriodSettings}
-                      attendance={data.midAttendance ?? []}
-                    />
-                  ) : (
-                    <View style={styles.noGradeBox}>
-                      <Ionicons name="document-outline" size={36} color="#C8DFF0" />
-                      <Text style={styles.noGradeText}>Midterm grades not yet recorded</Text>
-                    </View>
-                  )
-                ) : (
-                  data.finalComponent ? (
-                    <PeriodSection
-                      component={data.finalComponent}
-                      label="Final Term"
-                      settings={data.sheetSettings}
-                      periodSettings={data.finPeriodSettings}
-                      attendance={data.finAttendance ?? []}
-                    />
-                  ) : (
-                    <View style={styles.noGradeBox}>
-                      <Ionicons name="document-outline" size={36} color="#C8DFF0" />
-                      <Text style={styles.noGradeText}>Final term grades not yet recorded</Text>
-                    </View>
-                  )
-                )}
+              <Animated.View
+                key={activeTab}
+                entering={FadeIn.duration(motionDuration.base)}
+              >
+              {activeTab === 'midterm' ? (
+                <PeriodSection
+                  component={data?.midtermComponent ?? {}}
+                  label="Midterm"
+                  settings={data?.sheetSettings}
+                  periodSettings={data?.midPeriodSettings}
+                  attendance={data?.midAttendance ?? []}
+                />
+              ) : (
+                <PeriodSection
+                  component={data?.finalComponent ?? {}}
+                  label="Final Term"
+                  settings={data?.sheetSettings}
+                  periodSettings={data?.finPeriodSettings}
+                  attendance={data?.finAttendance ?? []}
+                />
+              )}
 
-                </Animated.View>
+              </Animated.View>
 
-                <GradeWeightsCard settings={data.sheetSettings} />
-              </FadeInSection>
-            ) : (
-              <FadeInSection index={1} style={styles.noGradeBox}>
-                <Ionicons name="document-outline" size={36} color="#C8DFF0" />
-                <Text style={styles.noGradeText}>No grades recorded yet</Text>
-                <Text style={styles.noGradeSubText}>
-                  Your teacher hasn't entered grades for this subject.
-                </Text>
-              </FadeInSection>
-            )}
+              <GradeWeightsCard settings={data?.sheetSettings} />
+            </FadeInSection>
 
             {/* Subject info card */}
             <FadeInSection index={2} style={styles.infoCard}>

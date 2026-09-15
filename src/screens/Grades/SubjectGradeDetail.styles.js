@@ -203,7 +203,9 @@ export default StyleSheet.create({
     justifyContent: 'space-between', paddingVertical: 8,
     borderTopWidth: 1, borderTopColor: '#F5F9FD',
   },
-  scoreLabel: { fontSize: 13, color: '#5A7A9A', fontWeight: '500', width: 90 },
+  scoreLabelCol: { width: 90, gap: 1, alignItems: 'center' },
+  scoreLabel: { fontSize: 13, color: '#5A7A9A', fontWeight: '500', textAlign: 'center' },
+  scoreDate: { fontSize: 10, color: '#B3C5D6', fontWeight: '500', textAlign: 'center' },
   scoreRight: { flex: 1, alignItems: 'flex-end', gap: 4 },
   miniBarBg: {
     width: '100%', height: 5, borderRadius: 3,
