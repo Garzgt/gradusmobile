@@ -126,36 +126,6 @@ function ScoreRow({ label, score, max, date }) {
   );
 }
 
-function SubtotalChips({ raw, transmuted, weighted }) {
-  if (raw == null && transmuted == null && weighted == null) return null;
-  return (
-    <View style={styles.subtotalRow}>
-      {raw != null && (
-        <View style={styles.subtotalChip}>
-          <Text style={styles.subtotalChipLabel}>Raw</Text>
-          <Text style={styles.subtotalChipVal}>
-            <CountUpNumber value={raw} decimals={1} style={styles.subtotalChipVal} />%
-          </Text>
-        </View>
-      )}
-      {transmuted != null && (
-        <View style={styles.subtotalChip}>
-          <Text style={styles.subtotalChipLabel}>Transmuted</Text>
-          <Text style={styles.subtotalChipVal}>
-            <CountUpNumber value={transmuted} decimals={1} style={styles.subtotalChipVal} />%
-          </Text>
-        </View>
-      )}
-      {weighted != null && (
-        <View style={styles.subtotalChip}>
-          <Text style={styles.subtotalChipLabel}>Weighted</Text>
-          <CountUpNumber value={weighted} decimals={2} style={[styles.subtotalChipVal, { color: '#2A7AB6' }]} />
-        </View>
-      )}
-    </View>
-  );
-}
-
 // ─── Attendance ───────────────────────────────────────────────────────────────
 
 function AttendanceDayRow({ entry }) {
@@ -232,7 +202,7 @@ function AttendanceContent({ attendance }) {
 
 // ─── Component block (collapsible accordion) ──────────────────────────────────
 
-function ComponentBlock({ icon, title, weightPct, weighted, raw, transmuted, children }) {
+function ComponentBlock({ icon, title, weightPct, children }) {
   const [open, setOpen] = useState(false);
   return (
     <Animated.View style={styles.compBlock} layout={LinearTransition.duration(motionDuration.base)}>
@@ -249,22 +219,15 @@ function ComponentBlock({ icon, title, weightPct, weighted, raw, transmuted, chi
           )}
         </View>
         <View style={styles.compBlockRight}>
-          {weighted != null && (
-            <View style={styles.compBlockScore}>
-              <CountUpNumber value={weighted} decimals={2} style={styles.compBlockScoreVal} />
-              <Text style={styles.compBlockScoreMax}> pts</Text>
-            </View>
-          )}
           <AnimatedChevron open={open} size={15} color="#8BA4BC" />
         </View>
       </PressableScale>
-      {open && (
+      {open && children && (
         <Animated.View
           entering={FadeIn.duration(motionDuration.base)}
           exiting={FadeOut.duration(motionDuration.fast)}
         >
-          {children && <View style={styles.compBlockBody}>{children}</View>}
-          <SubtotalChips raw={raw} transmuted={transmuted} weighted={weighted} />
+          <View style={styles.compBlockBody}>{children}</View>
         </Animated.View>
       )}
     </Animated.View>
@@ -398,7 +361,6 @@ function PeriodSection({ component = {}, label, settings: s, periodSettings: ps,
         {/* 1. Attendance */}
         <ComponentBlock icon="calendar-outline" title="Attendance"
           weightPct={s?.weight_attendance}
-          weighted={component.attendance_weighted}
         >
           <AttendanceContent attendance={attendance} />
         </ComponentBlock>
@@ -406,8 +368,6 @@ function PeriodSection({ component = {}, label, settings: s, periodSettings: ps,
         {/* 2. Quizzes */}
         <ComponentBlock icon="help-circle-outline" title="Quizzes"
           weightPct={s?.weight_quizzes}
-          weighted={component.quizzes_weighted}
-          raw={component.quizzes_raw} transmuted={component.quizzes_transmuted}
         >
           {noQuizData ? (
             <Text style={styles.noDataText}>No quizzes recorded yet</Text>
@@ -425,8 +385,6 @@ function PeriodSection({ component = {}, label, settings: s, periodSettings: ps,
         {/* 3. Activities */}
         <ComponentBlock icon="create-outline" title="Activities"
           weightPct={s?.weight_activities}
-          weighted={component.activities_weighted}
-          raw={component.activities_raw} transmuted={component.activities_transmuted}
         >
           {noActData ? (
             <Text style={styles.noDataText}>No activities recorded yet</Text>
@@ -444,8 +402,6 @@ function PeriodSection({ component = {}, label, settings: s, periodSettings: ps,
         {/* 4. Recitation */}
         <ComponentBlock icon="mic-outline" title="Recitation"
           weightPct={s?.weight_recitation}
-          weighted={component.recitation_weighted}
-          transmuted={component.recitation_transmuted}
         >
           {noRecData ? (
             <Text style={styles.noDataText}>No recitation recorded yet</Text>
@@ -460,8 +416,6 @@ function PeriodSection({ component = {}, label, settings: s, periodSettings: ps,
         {s?.class_type === 'lab' && (
           <ComponentBlock icon="flask-outline" title="Laboratory"
             weightPct={s?.weight_laboratory}
-            weighted={component.laboratory_weighted}
-            raw={component.laboratory_raw} transmuted={component.laboratory_transmuted}
           >
             {noLabData ? (
               <Text style={styles.noDataText}>No laboratory scores recorded yet</Text>
@@ -474,8 +428,6 @@ function PeriodSection({ component = {}, label, settings: s, periodSettings: ps,
         {/* 6. Major Exam */}
         <ComponentBlock icon="document-text-outline" title="Major Exam"
           weightPct={s?.weight_major_exam}
-          weighted={component.major_exam_weighted}
-          raw={component.major_exam_raw} transmuted={component.major_exam_transmuted}
         >
           {noExamData ? (
             <Text style={styles.noDataText}>No major exam recorded yet</Text>

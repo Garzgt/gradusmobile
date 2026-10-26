@@ -192,9 +192,6 @@ export default StyleSheet.create({
     paddingVertical: 2,
   },
   compBlockWeightText: { fontSize: 10, fontWeight: '700', color: '#5A7A9A' },
-  compBlockScore:    { flexDirection: 'row', alignItems: 'baseline', gap: 2 },
-  compBlockScoreVal: { fontSize: 16, fontWeight: '800', color: '#1a3c5e' },
-  compBlockScoreMax: { fontSize: 11, color: '#8BA4BC', fontWeight: '500' },
   compBlockBody:     { gap: 0, marginTop: 10 },
 
   // ── Score row with mini bar ───────────────────────────────────────────────
@@ -214,20 +211,6 @@ export default StyleSheet.create({
   miniBarFill: { height: '100%', borderRadius: 3, backgroundColor: '#2A7AB6' },
   scoreText:   { fontSize: 13, fontWeight: '700', color: '#1A2A3A' },
   scoreMax:    { fontSize: 12, fontWeight: '400', color: '#8BA4BC' },
-
-  // ── Subtotal chips ────────────────────────────────────────────────────────
-  subtotalRow: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: 6,
-    marginTop: 10, paddingTop: 10,
-    borderTopWidth: 1, borderTopColor: '#F0F6FC',
-  },
-  subtotalChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#F2F6FA', borderRadius: 8,
-    paddingHorizontal: 8, paddingVertical: 4,
-  },
-  subtotalChipLabel:   { fontSize: 11, color: '#8BA4BC', fontWeight: '500' },
-  subtotalChipVal:     { fontSize: 12, fontWeight: '700', color: '#1A2A3A' },
 
   // ── Grade weights card ────────────────────────────────────────────────────
   weightsCard: {

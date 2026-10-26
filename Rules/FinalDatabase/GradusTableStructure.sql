@@ -38,6 +38,7 @@ CREATE TABLE public.teachers (
   is_active boolean NOT NULL DEFAULT true,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  max_teaching_hours numeric CHECK (max_teaching_hours IS NULL OR max_teaching_hours > 0::numeric AND max_teaching_hours <= 80::numeric),
   CONSTRAINT teachers_pkey PRIMARY KEY (id),
   CONSTRAINT teachers_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(user_id)
 );
@@ -229,6 +230,7 @@ CREATE TABLE public.schedule_publications (
   notes text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  published_entry_count integer,
   CONSTRAINT schedule_publications_pkey PRIMARY KEY (id),
   CONSTRAINT schedule_publications_term_id_fkey FOREIGN KEY (term_id) REFERENCES public.academic_terms(id),
   CONSTRAINT schedule_publications_program_id_fkey FOREIGN KEY (program_id) REFERENCES public.programs(id),
@@ -680,4 +682,52 @@ CREATE TABLE public.app_versions (
   release_notes text,
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT app_versions_pkey PRIMARY KEY (platform)
+);
+CREATE TABLE public.teacher_availability_breaks (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  availability_id uuid NOT NULL,
+  start_time time without time zone NOT NULL,
+  end_time time without time zone NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT teacher_availability_breaks_pkey PRIMARY KEY (id),
+  CONSTRAINT teacher_availability_breaks_availability_id_fkey FOREIGN KEY (availability_id) REFERENCES public.teacher_availability(id)
+);
+CREATE TABLE public.scheduling_day_settings (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  day_end_time time without time zone NOT NULL DEFAULT '17:30:00'::time without time zone CHECK (day_end_time >= '17:30:00'::time without time zone AND day_end_time <= '21:00:00'::time without time zone),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  generation_end_time time without time zone NOT NULL DEFAULT '17:30:00'::time without time zone CHECK (generation_end_time >= '17:30:00'::time without time zone AND generation_end_time <= '21:00:00'::time without time zone),
+  ignore_teacher_window_end boolean NOT NULL DEFAULT false,
+  early_day_cutoff_enabled boolean NOT NULL DEFAULT false,
+  early_day_cutoff_time time without time zone NOT NULL DEFAULT '15:00:00'::time without time zone CHECK (early_day_cutoff_time >= '10:00:00'::time without time zone AND early_day_cutoff_time <= '21:00:00'::time without time zone),
+  CONSTRAINT scheduling_day_settings_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.schedule_pool_items (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  term_id uuid NOT NULL,
+  section_id uuid NOT NULL,
+  subject_id uuid NOT NULL,
+  teacher_id uuid,
+  pattern text NOT NULL,
+  source_entry_ids ARRAY NOT NULL DEFAULT '{}'::uuid[],
+  parts jsonb NOT NULL DEFAULT '[]'::jsonb,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT schedule_pool_items_pkey PRIMARY KEY (id),
+  CONSTRAINT schedule_pool_items_term_id_fkey FOREIGN KEY (term_id) REFERENCES public.academic_terms(id),
+  CONSTRAINT schedule_pool_items_section_id_fkey FOREIGN KEY (section_id) REFERENCES public.sections(id),
+  CONSTRAINT schedule_pool_items_subject_id_fkey FOREIGN KEY (subject_id) REFERENCES public.subjects(id),
+  CONSTRAINT schedule_pool_items_teacher_id_fkey FOREIGN KEY (teacher_id) REFERENCES public.teachers(id)
+);
+CREATE TABLE public.report_signatories (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  label text NOT NULL,
+  name text NOT NULL,
+  title text NOT NULL DEFAULT ''::text,
+  signature_url text,
+  display_order integer NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT report_signatories_pkey PRIMARY KEY (id)
 );
