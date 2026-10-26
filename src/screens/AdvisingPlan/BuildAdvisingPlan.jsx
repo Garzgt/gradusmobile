@@ -32,6 +32,7 @@ import { duration as motionDuration, spring as motionSpring } from '../../animat
 import SubjectPoolList from './components/SubjectPoolList';
 import { buildEligiblePools, formatSemesterLabel, fetchScheduleEntriesForSubjects } from './services/advisingPlanService';
 import { autoAssignFromSchedule } from './services/advisingValidationService';
+import usePublishedSchedule from '../../hooks/usePublishedSchedule';
 
 const SCAN_STORAGE_KEY = 'advising.evaluationScan';
 const SELECTION_STORAGE_KEY = 'advising.selectedSubjects';
@@ -122,21 +123,31 @@ export default function BuildAdvisingPlan() {
     if (!hasLoadedRef.current) hasLoadedRef.current = true;
   }, [user]);
 
+  const {
+    isPublished: scheduleIsPublished,
+    loading: scheduleLoading,
+    refetch: refetchPublishedSchedule,
+  } = usePublishedSchedule(activeTerm?.id);
+
   useEffect(() => {
     loadData(false);
   }, [loadData]);
 
+  // Pull-to-refresh and re-focus already reload activeTerm/student/scanData via
+  // loadData — the publish-status hook needs the same nudge, since its own effect
+  // only reruns when termId changes, not just because the caller wants a fresh read.
   useFocusEffect(
     useCallback(() => {
       loadData(true);
-    }, [loadData])
+      refetchPublishedSchedule();
+    }, [loadData, refetchPublishedSchedule])
   );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadData(true);
+    await Promise.all([loadData(true), refetchPublishedSchedule()]);
     setRefreshing(false);
-  }, [loadData]);
+  }, [loadData, refetchPublishedSchedule]);
 
   const termSemester = activeTerm?.semester || null;
   const termLabel = activeTerm
@@ -337,6 +348,14 @@ export default function BuildAdvisingPlan() {
     && eligibleBackWithKeys.length === 0
     && blocked.length === 0
     && eligibleCurrentWithKeys.length > 0;
+  // The subject picker shows section/teacher choices sourced straight from
+  // schedule_entries — not safe to show (let alone let the student Generate
+  // against) until the admin has actually published that schedule.
+  const scheduleNotPublished = hasScan
+    && !missingSetup
+    && !isRegularStudent
+    && !scheduleLoading
+    && !scheduleIsPublished;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -422,7 +441,7 @@ export default function BuildAdvisingPlan() {
         ) : null}
 
         {/* Loading skeleton */}
-        {loading ? (
+        {loading || (hasScan && !missingSetup && !isRegularStudent && scheduleLoading) ? (
           <View style={styles.subjectCard}>
             <View style={{ gap: 10 }}>
               <SkeletonBox width="100%" height={14} borderRadius={7} />
@@ -453,6 +472,18 @@ export default function BuildAdvisingPlan() {
               Your evaluation shows no incomplete subjects from earlier terms. This tool is
               for building a catch-up plan for irregular students — since you're on
               track, please enroll through the standard process instead.
+            </Text>
+          </FadeInSection>
+        ) : scheduleNotPublished ? (
+          /* Schedule exists but hasn't been published yet — the section/teacher
+             choices below are sourced from it, so showing them pre-publish has the
+             same "might change under you" problem as letting Generate run. */
+          <FadeInSection index={1} style={styles.emptyCard}>
+            <Ionicons name="time-outline" size={28} color="#B7770D" />
+            <Text style={styles.emptyTitle}>Schedule not published yet</Text>
+            <Text style={styles.emptyText}>
+              The Admin hasn't published the class schedule for {termLabel} yet.
+              Check back once it's published before building your plan.
             </Text>
           </FadeInSection>
         ) : (

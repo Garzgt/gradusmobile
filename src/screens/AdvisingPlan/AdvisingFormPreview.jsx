@@ -30,6 +30,8 @@ import useParallaxMotion from '../../animations/useParallaxMotion';
 import { duration as motionDuration } from '../../animations/motionTokens';
 import ScheduleGrid from './components/ScheduleGrid';
 import CourseTableView from './components/CourseTableView';
+import usePublishedSchedule from '../../hooks/usePublishedSchedule';
+import useDayEndTime from '../../hooks/useDayEndTime';
 
 const FALLBACK_COLOR = { bg: '#DBEAFE', text: '#1E40AF', border: '#93C5FD' };
 
@@ -317,6 +319,9 @@ export default function AdvisingFormPreview() {
     schoolYear = '',
   } = route.params || {};
 
+  const { isPublished: scheduleIsPublished } = usePublishedSchedule(termId);
+  const { dayEndMinutes } = useDayEndTime();
+
   const subjectColors = useMemo(() => {
     const map = {};
     assigned.forEach((entry) => {
@@ -339,6 +344,18 @@ export default function AdvisingFormPreview() {
   }, [assigned]);
 
   const handleGenerateForm = () => {
+    // Defends against a TOCTOU gap: the admin can roll a publish back to draft via
+    // History while the student is sitting on this exact screen, after having
+    // already passed BuildAdvisingPlan's own published check a step earlier.
+    if (!scheduleIsPublished) {
+      alert.show({
+        type: 'warning',
+        title: 'Schedule Not Published Yet',
+        message: "The Admin hasn't published the class schedule for this term yet. Please wait until it's published before generating your pre-registration form.",
+        buttons: [{ text: 'OK', style: 'cancel' }],
+      });
+      return;
+    }
     alert.show({
       type: 'info',
       title: 'Generate Pre-Registration Form',
@@ -541,7 +558,7 @@ export default function AdvisingFormPreview() {
         {assigned.length > 0 && (
           <FadeInSection index={1}>
             <View style={{ height: 10 }} />
-            <ScheduleGrid entries={assigned} subjectColors={subjectColors} />
+            <ScheduleGrid entries={assigned} subjectColors={subjectColors} dayEndMinutes={dayEndMinutes} />
             <View style={{ height: 8 }} />
             <CourseTableView assigned={assigned} subjectColors={subjectColors} />
           </FadeInSection>

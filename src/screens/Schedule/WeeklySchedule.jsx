@@ -14,6 +14,8 @@ import CountUpNumber from '../../components/animated/CountUpNumber';
 import useParallaxMotion from '../../animations/useParallaxMotion';
 import ScheduleGrid from '../AdvisingPlan/components/ScheduleGrid';
 import CourseTableView from '../AdvisingPlan/components/CourseTableView';
+import usePublishedSchedule from '../../hooks/usePublishedSchedule';
+import useDayEndTime from '../../hooks/useDayEndTime';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -120,11 +122,22 @@ export default function WeeklySchedule() {
     setLoading(false);
   }, [user]);
 
-  useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
+  const {
+    isPublished: scheduleIsPublished,
+    loading: scheduleCheckLoading,
+    refetch: refetchPublishedSchedule,
+  } = usePublishedSchedule(term?.id);
+  const { dayEndMinutes, refetch: refetchDayEndTime } = useDayEndTime();
+
+  useFocusEffect(useCallback(() => {
+    loadData();
+    refetchPublishedSchedule();
+    refetchDayEndTime();
+  }, [loadData, refetchPublishedSchedule, refetchDayEndTime]));
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadData(true);
+    await Promise.all([loadData(true), refetchPublishedSchedule(), refetchDayEndTime()]);
     setRefreshing(false);
   };
 
@@ -169,12 +182,34 @@ export default function WeeklySchedule() {
           />
         }
       >
-        {loading ? (
+        {loading || (term && scheduleCheckLoading) ? (
           <ScheduleSkeleton />
         ) : error ? (
           <FadeInSection style={styles.emptyCard}>
             <Ionicons name="alert-circle-outline" size={32} color="#C8DFF0" />
             <Text style={styles.emptyTitle}>{error}</Text>
+          </FadeInSection>
+        ) : term && !scheduleIsPublished ? (
+          /* Entries may already exist for this term, but the admin hasn't published
+             them yet — the timetable could still change, so it stays hidden until
+             publish rather than showing a draft that might not match the final one. */
+          <FadeInSection style={styles.lockedCard}>
+            <View style={styles.lockedIconWrap}>
+              <Ionicons name="hourglass-outline" size={30} color="#B7770D" />
+            </View>
+            <View style={styles.lockedTermPill}>
+              <Text style={styles.lockedTermPillText}>{formatTermLabel(term)}</Text>
+            </View>
+            <Text style={styles.lockedTitle}>Schedule Not Published Yet</Text>
+            <Text style={styles.lockedText}>
+              The Admin hasn't published the class schedule for this term yet.
+              Your timetable will appear here as soon as it's live.
+            </Text>
+            <View style={styles.lockedNotifyRow}>
+              <Ionicons name="notifications-outline" size={14} color="#2A7AB6" />
+              <Text style={styles.lockedNotifyText}>We'll notify you the moment it's published</Text>
+            </View>
+            <Text style={styles.lockedHint}>Pull down to check again</Text>
           </FadeInSection>
         ) : entries.length === 0 ? (
           <FadeInSection style={styles.emptyCard}>
@@ -213,7 +248,7 @@ export default function WeeklySchedule() {
               <View style={styles.sectionLabelCard}>
                 <Text style={styles.sectionLabelText}>Weekly Schedule</Text>
               </View>
-              <ScheduleGrid entries={entries} subjectColors={subjectColors} />
+              <ScheduleGrid entries={entries} subjectColors={subjectColors} dayEndMinutes={dayEndMinutes} />
             </FadeInSection>
 
             {/* Course table */}
@@ -303,4 +338,37 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { fontSize: 15, fontWeight: '700', color: '#1A2A3A' },
   emptyText:  { fontSize: 12, color: '#8BA4BC', textAlign: 'center', lineHeight: 18 },
+
+  // "Not published yet" lock state
+  lockedCard: {
+    alignItems: 'center', gap: 10,
+    backgroundColor: '#FFFFFF', borderRadius: 18, padding: 28, marginTop: 12,
+    elevation: 1,
+    shadowColor: '#1A2A3A', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 4,
+  },
+  lockedIconWrap: {
+    width: 68, height: 68, borderRadius: 34,
+    backgroundColor: '#FDEBD0',
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 2,
+  },
+  lockedTermPill: {
+    backgroundColor: '#EBF4FC', borderRadius: 999,
+    paddingHorizontal: 12, paddingVertical: 4,
+  },
+  lockedTermPillText: { fontSize: 11, fontWeight: '700', color: '#2A7AB6', letterSpacing: 0.3 },
+  lockedTitle: { fontSize: 16, fontWeight: '800', color: '#1A2A3A', marginTop: 4 },
+  lockedText: {
+    fontSize: 12.5, color: '#5A7A9A', textAlign: 'center', lineHeight: 19,
+    paddingHorizontal: 6,
+  },
+  lockedNotifyRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: '#EBF4FC', borderRadius: 999,
+    paddingHorizontal: 12, paddingVertical: 7,
+    marginTop: 6,
+  },
+  lockedNotifyText: { fontSize: 11.5, fontWeight: '600', color: '#2A7AB6' },
+  lockedHint: { fontSize: 11, color: '#B0C4D8', marginTop: 8 },
 });

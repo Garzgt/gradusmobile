@@ -14,12 +14,15 @@ const CONTENT_PADDING = 32;
 const TIME_COL_W = 60;
 const HEADER_H = 28;
 const ROW_H = 18;
-const GRID_START = 7 * 60;        // 7:00
-const GRID_END   = 17 * 60 + 30;  // 17:30 (5:30 PM)
+// Fallback window when there's nothing to measure against (e.g. no entries) —
+// not a cap. The day's real end time is admin-configurable up to 21:00
+// (scheduling_day_settings on the web side), and the grid must never clip a
+// class that runs later than this, so the actual bounds below are derived
+// from the entries themselves and only widen past these defaults, never
+// shrink below them.
+const DEFAULT_GRID_START = 7 * 60;       // 7:00
+const DEFAULT_GRID_END   = 17 * 60 + 30; // 17:30 (5:30 PM)
 const DEFAULT_COLOR = { bg: '#3B82F6', text: '#111111', border: '#3B82F6' };
-
-const TIME_SLOTS = [];
-for (let t = GRID_START; t < GRID_END; t += 30) TIME_SLOTS.push(t);
 
 function timeToMinutes(t) {
   if (!t) return 0;
@@ -38,7 +41,7 @@ function slotRange(start) {
   return `${fmt(start)} -${fmt(start + 30)}`;
 }
 
-export default function ScheduleGrid({ entries, subjectColors }) {
+export default function ScheduleGrid({ entries, subjectColors, dayEndMinutes = DEFAULT_GRID_END }) {
   const { width } = useWindowDimensions();
   const dayColW = Math.floor((width - CONTENT_PADDING - TIME_COL_W) / DAYS.length);
 
@@ -52,7 +55,36 @@ export default function ScheduleGrid({ entries, subjectColors }) {
     return map;
   }, [entries]);
 
-  const gridHeight = TIME_SLOTS.length * ROW_H;
+  // The end boundary follows the admin-configured day end time (same global
+  // setting Manage's own grid uses, passed down by the caller via
+  // useDayEndTime) — not this particular set of entries — so every
+  // student's grid shows the same window, even a student whose own classes
+  // happen to end earlier than the configured day end. Still widens
+  // defensively if some entry ever exceeds it (shouldn't happen — the web
+  // side refuses to shrink day_end_time below any existing entry — but
+  // costs nothing to guard against here too).
+  const { gridStart, gridEnd } = useMemo(() => {
+    let maxEnd = dayEndMinutes;
+    (entries || []).forEach((e) => {
+      const en = timeToMinutes(e.end_time);
+      if (en > maxEnd) maxEnd = en;
+    });
+    return {
+      gridStart: DEFAULT_GRID_START,
+      // Round to the nearest 30-minute slot, not the nearest hour — the grid's own
+      // rows are 30 minutes wide (see the TIME_SLOTS step below), so rounding to
+      // the hour here could push a half-hour value like 18:30 up to 19:00.
+      gridEnd: Math.max(DEFAULT_GRID_END, Math.ceil(maxEnd / 30) * 30),
+    };
+  }, [entries, dayEndMinutes]);
+
+  const timeSlots = useMemo(() => {
+    const slots = [];
+    for (let t = gridStart; t < gridEnd; t += 30) slots.push(t);
+    return slots;
+  }, [gridStart, gridEnd]);
+
+  const gridHeight = timeSlots.length * ROW_H;
   const totalWidth = TIME_COL_W + DAYS.length * dayColW;
 
   return (
@@ -74,7 +106,7 @@ export default function ScheduleGrid({ entries, subjectColors }) {
 
         {/* Time range column */}
         <View style={{ width: TIME_COL_W }}>
-          {TIME_SLOTS.map((slot) => (
+          {timeSlots.map((slot) => (
             <View key={slot} style={[styles.timeCell, { height: ROW_H }]}>
               <Text style={styles.timeLabel}>{slotRange(slot)}</Text>
             </View>
@@ -88,7 +120,7 @@ export default function ScheduleGrid({ entries, subjectColors }) {
             style={[styles.dayCol, { width: dayColW, height: gridHeight }]}
           >
             {/* Background row lines */}
-            {TIME_SLOTS.map((slot) => (
+            {timeSlots.map((slot) => (
               <View
                 key={slot}
                 style={[styles.gridCell, { height: ROW_H }, slot % 60 === 0 && styles.gridCellHour]}
@@ -99,7 +131,7 @@ export default function ScheduleGrid({ entries, subjectColors }) {
             {entriesByDay[day.key].map((entry, i) => {
               const startMin = timeToMinutes(entry.start_time);
               const endMin   = timeToMinutes(entry.end_time);
-              const top    = ((startMin - GRID_START) / 30) * ROW_H;
+              const top    = ((startMin - gridStart) / 30) * ROW_H;
               const height = Math.max(((endMin - startMin) / 30) * ROW_H - 1, 18);
               const colorKey = entry._subjectCode || entry.subjects?.subject_code;
               const c = subjectColors?.[colorKey] || DEFAULT_COLOR;
