@@ -1,13 +1,24 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
-import * as Linking from 'expo-linking';
+import { GoogleSignin, statusCodes, isErrorWithCode } from '@react-native-google-signin/google-signin';
 import { supabase } from '../config/supabase';
 import { registerForPushNotificationsAsync, savePushToken } from '../services/core/pushNotificationService';
 
-WebBrowser.maybeCompleteAuthSession();
+GoogleSignin.configure({
+  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+});
 
 const PSU_DOMAIN = '@pampangastateu.edu.ph';
+
+// Google Play Services caches the last-picked account natively, independent of Supabase's
+// session — without this, GoogleSignin.signIn() silently re-selects the same (e.g. blocked)
+// account next time instead of showing the picker again. Swallow errors since this is a
+// best-effort cleanup (e.g. no-op when there was no native session to begin with).
+const signOutGoogle = async () => {
+  try {
+    await GoogleSignin.signOut();
+  } catch {}
+};
 
 const AuthContext = createContext(null);
 
@@ -76,6 +87,7 @@ export function AuthProvider({ children }) {
           if (payload.new?.is_active === false) {
             deactivatedRef.current = true;
             supabase.auth.signOut();
+            signOutGoogle();
             setIsDeactivated(true);
           }
         }
@@ -99,6 +111,7 @@ export function AuthProvider({ children }) {
     if (student && student.is_active === false) {
       deactivatedRef.current = true;
       await supabase.auth.signOut();
+      await signOutGoogle();
       setIsDeactivated(true);
       return false;
     }
@@ -111,6 +124,7 @@ export function AuthProvider({ children }) {
     if (!email.endsWith(PSU_DOMAIN)) {
       domainBlockedRef.current = true;
       await supabase.auth.signOut();
+      await signOutGoogle();
       setIsDomainBlocked(true);
       setIsLoading(false);
       return;
@@ -143,69 +157,30 @@ export function AuthProvider({ children }) {
   };
 
   const signInWithGoogle = async () => {
-    const redirectUrl = 'gradus://';
+    try {
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+      const idToken = response.data?.idToken;
+      if (!idToken) return { error: new Error('Google Sign-In did not return an ID token.') };
 
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: redirectUrl,
-        skipBrowserRedirect: true,
-        queryParams: { access_type: 'offline', prompt: 'consent' },
-      },
-    });
-
-    if (error || !data?.url) return { error };
-
-    return new Promise((resolve) => {
-      let finished = false;
-
-      const finish = async (url) => {
-        if (finished) return;
-        finished = true;
-        linkingSub.remove();
-
-        if (!url) {
-          resolve({ error: null });
-          return;
-        }
-
-        const { queryParams } = Linking.parse(url);
-        const code = queryParams?.code;
-        const urlError = queryParams?.error_description ?? queryParams?.error;
-
-        if (urlError) {
-          resolve({ error: new Error(decodeURIComponent(urlError.replace(/\+/g, ' '))) });
-          return;
-        }
-        if (!code) {
-          resolve({ error: null });
-          return;
-        }
-
-        const { error: sessionError } = await supabase.auth.exchangeCodeForSession(code);
-        resolve({ error: sessionError ?? null });
-      };
-
-      const linkingSub = Linking.addEventListener('url', ({ url }) => {
-        if (url?.startsWith('gradus:')) finish(url);
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: 'google',
+        token: idToken,
       });
-
-      WebBrowser.openAuthSessionAsync(data.url, redirectUrl)
-        .then((result) => {
-          if (result.type === 'success' && result.url) {
-            finish(result.url);
-          } else {
-            setTimeout(() => finish(null), 500);
-          }
-        })
-        .catch(() => finish(null));
-    });
+      return { error };
+    } catch (err) {
+      if (isErrorWithCode(err) && err.code === statusCodes.SIGN_IN_CANCELLED) {
+        return { error: null };
+      }
+      return { error: err };
+    }
   };
 
   const signOut = async () => {
     setIsDomainBlocked(false);
     setIsDeactivated(false);
     await supabase.auth.signOut();
+    await signOutGoogle();
   };
 
   return (

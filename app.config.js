@@ -2,7 +2,7 @@ module.exports = {
   expo: {
     name: "Gradus",
     slug: "gradus",
-    version: "1.0.1",
+    version: "1.0.2",
     scheme: "gradus",
     orientation: "portrait",
     icon: "./assets/icon.png",
@@ -49,6 +49,7 @@ module.exports = {
         },
       ],
       "expo-sharing",
+      "@react-native-google-signin/google-signin",
       [
         "expo-splash-screen",
         {
